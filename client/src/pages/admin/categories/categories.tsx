@@ -1,0 +1,466 @@
+import React, { useEffect, useState } from "react";
+import Sidebar from "../../../layout/sidebar";
+import AdminHeader from "../../../layout/headeradmin";
+import axios from "../../../api/axios";
+
+/* ================= TYPES ================= */
+type Category = {
+  id: number;
+  name: string;
+};
+
+type Brand = {
+  id: number;
+  name: string;
+  category_id: number;
+  category_name?: string;
+};
+
+const Categories: React.FC = () => {
+  /* ================= STATES ================= */
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showBrandModal, setShowBrandModal] = useState(false);
+
+  const [newCategory, setNewCategory] = useState("");
+  const [newBrand, setNewBrand] = useState({ name: "", category_id: 0 });
+
+  const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
+  const [editCategoryValue, setEditCategoryValue] = useState("");
+
+  const [editBrandId, setEditBrandId] = useState<number | null>(null);
+  const [editBrandValue, setEditBrandValue] = useState("");
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: "category" | "brand" | null;
+    id: number | null;
+  }>({ type: null, id: null });
+
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [brandPage, setBrandPage] = useState(1);
+
+const [openMenu, setOpenMenu] = useState<{
+  id: number | null;
+  type: "category" | "brand" | null;
+} | null>(null);
+
+  /* ================= CLOSE MENU ON OUTSIDE CLICK ================= */
+  useEffect(() => {
+    const close = () => setOpenMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, []);
+
+  /* ================= LOAD ================= */
+  const fetchCategories = async () => {
+    const res = await axios.get("/categories");
+    setCategories(res.data);
+  };
+
+  const fetchBrands = async () => {
+    const res = await axios.get("/brands");
+    setBrands(res.data);
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    fetchBrands();
+  }, []);
+
+  /* ================= CATEGORY CRUD ================= */
+  const addCategory = async () => {
+    if (!newCategory.trim()) return;
+    await axios.post("/categories", { name: newCategory });
+    setNewCategory("");
+    setShowCategoryModal(false);
+    fetchCategories();
+  };
+
+  const updateCategory = async () => {
+    if (!editCategoryId) return;
+    await axios.put(`/categories/${editCategoryId}`, { name: editCategoryValue });
+    setEditCategoryId(null);
+    setEditCategoryValue("");
+    fetchCategories();
+  };
+
+  const deleteCategory = async (id: number) => {
+    await axios.delete(`/categories/${id}`);
+    setDeleteConfirm({ type: null, id: null });
+    fetchCategories();
+  };
+
+  /* ================= BRAND CRUD ================= */
+  const addBrand = async () => {
+    if (!newBrand.name || !newBrand.category_id) return;
+    await axios.post("/brands", newBrand);
+    setNewBrand({ name: "", category_id: 0 });
+    setShowBrandModal(false);
+    fetchBrands();
+  };
+
+  const updateBrand = async () => {
+    if (!editBrandId) return;
+    await axios.put(`/brands/${editBrandId}`, {
+      name: editBrandValue,
+      category_id: brands.find((b) => b.id === editBrandId)?.category_id,
+    });
+    setEditBrandId(null);
+    setEditBrandValue("");
+    fetchBrands();
+  };
+
+  const deleteBrand = async (id: number) => {
+    await axios.delete(`/brands/${id}`);
+    setDeleteConfirm({ type: null, id: null });
+    fetchBrands();
+  };
+
+  /* ================= DROPDOWN STYLE ================= */
+const dropdownStyle: React.CSSProperties = {
+  position: "fixed",
+  transform: "translateY(-50%)",
+  background: "#fff",
+  border: "1px solid #ddd",
+  borderRadius: "6px",
+  boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+  zIndex: 999999,
+  minWidth: "140px",
+};
+  return (
+    <div className="d-flex">
+      <Sidebar />
+
+      <div className="flex-grow-1 d-flex flex-column">
+        <AdminHeader />
+
+        <div className="p-4 bg-light min-vh-100">
+
+          {/* ================= CATEGORY TOP BAR ================= */}
+          <div className="d-flex justify-content-between mb-3">
+            <h5>Categories</h5>
+            <button className="btn btn-primary" onClick={() => setShowCategoryModal(true)}>
+              + Add Category
+            </button>
+          </div>
+
+          {/* ================= CATEGORY TABLE ================= */}
+          <div className="card mb-4">
+            <table className="table mb-0">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th  style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categories
+                  .slice((categoryPage - 1) * 5, categoryPage * 5)
+                  .map((c) => (
+                    <tr key={c.id}>
+                      <td>
+                        {editCategoryId === c.id ? (
+                          <input
+                            value={editCategoryValue}
+                            onChange={(e) => setEditCategoryValue(e.target.value)}
+                          />
+                        ) : (
+                          c.name
+                        )}
+                      </td>
+                   <td style={{ position: "relative", textAlign: "right" }}>
+                        {/* 3 DOT BUTTON */}
+                        <button
+                          className="btn btn-light btn-sm"
+ onClick={(e) => {
+  e.stopPropagation();
+  setOpenMenu({
+    id: c.id,
+    type: "category",
+  });
+}}
+                        >
+                          ⋮
+                        </button>
+
+                        {/* DROPDOWN */}
+                       {openMenu?.id === c.id && openMenu.type === "category" && (
+  <div onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
+                            {editCategoryId === c.id ? (
+                              <button
+                                className="dropdown-item"
+                                onClick={() => {
+                                  updateCategory();
+                                  setOpenMenu(null);
+                                }}
+                              >
+                                Save
+                              </button>
+                            ) : (
+                              <button
+                                className="dropdown-item"
+                                onClick={() => {
+                                  setEditCategoryId(c.id);
+                                  setEditCategoryValue(c.name);
+                                  setOpenMenu(null);
+                                }}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              className="dropdown-item text-danger"
+                              onClick={() => {
+                                setDeleteConfirm({ type: "category", id: c.id });
+                                setOpenMenu(null);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+
+            {/* CATEGORY PAGINATION */}
+            <div className="d-flex justify-content-center mt-3 gap-2 pb-3">
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                disabled={categoryPage === 1}
+                onClick={() => setCategoryPage((p) => p - 1)}
+              >
+                Prev
+              </button>
+              <span>Page {categoryPage}</span>
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                disabled={categories.length <= categoryPage * 5}
+                onClick={() => setCategoryPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
+          {/* ================= BRANDS SECTION ================= */}
+          <div className="d-flex justify-content-between mb-2">
+            <h5>Brands</h5>
+            <button className="btn btn-dark" onClick={() => setShowBrandModal(true)}>
+              + Add Brand
+            </button>
+          </div>
+
+          <div className="card">
+            <table className="table mb-0">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brands
+                  .slice((brandPage - 1) * 10, brandPage * 10)
+                  .map((b) => (
+                    <tr key={b.id}>
+                      <td>
+                        {editBrandId === b.id ? (
+                          <input
+                            value={editBrandValue}
+                            onChange={(e) => setEditBrandValue(e.target.value)}
+                          />
+                        ) : (
+                          b.name
+                        )}
+                      </td>
+                      <td>
+                        {categories.find((c) => c.id === b.category_id)?.name || "-"}
+                      </td>
+                   <td style={{ position: "relative", textAlign: "right" }}>
+                        {/* 3 DOT BUTTON */}
+                        <button
+                          className="btn btn-light btn-sm"
+         onClick={(e) => {
+  e.stopPropagation();
+  const rect = e.currentTarget.getBoundingClientRect();
+
+  setOpenMenu({
+    id: b.id,
+    type: "brand",
+   
+  });
+}}
+                        >
+                          ⋮
+                        </button>
+
+                        {/* DROPDOWN */}
+    {openMenu?.id === b.id && openMenu.type === "brand" && (
+  <div onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
+                            {editBrandId === b.id ? (
+                              <button
+                                className="dropdown-item"
+                                onClick={() => {
+                                  updateBrand();
+                                  setOpenMenu(null);
+                                }}
+                              >
+                                Save
+                              </button>
+                            ) : (
+                              <button
+                                className="dropdown-item"
+                                onClick={() => {
+                                  setEditBrandId(b.id);
+                                  setEditBrandValue(b.name);
+                                  setOpenMenu(null);
+                                }}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              className="dropdown-item text-danger"
+                              onClick={() => {
+                                setDeleteConfirm({ type: "brand", id: b.id });
+                                setOpenMenu(null);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+
+            {/* BRAND PAGINATION */}
+            <div className="d-flex justify-content-center mt-3 gap-2 pb-3">
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                disabled={brandPage === 1}
+                onClick={() => setBrandPage((p) => p - 1)}
+              >
+                Prev
+              </button>
+              <span>Page {brandPage}</span>
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                disabled={brands.length <= brandPage * 10}
+                onClick={() => setBrandPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
+          {/* ================= CATEGORY MODAL ================= */}
+          {showCategoryModal && (
+            <div
+              className="d-flex align-items-center justify-content-center"
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+            >
+              <div className="bg-white p-4 rounded shadow" style={{ width: "400px" }}>
+                <h5 className="mb-3">Add Category</h5>
+                <input
+                  className="form-control mb-3"
+                  placeholder="Category name..."
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                />
+                <div className="d-flex justify-content-end gap-2">
+                  <button className="btn btn-secondary" onClick={() => setShowCategoryModal(false)}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={addCategory}>
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= BRAND MODAL ================= */}
+          {showBrandModal && (
+            <div
+              className="d-flex align-items-center justify-content-center"
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+            >
+              <div className="bg-white p-4 rounded shadow" style={{ width: "400px" }}>
+                <h5 className="mb-3">Add Brand</h5>
+                <input
+                  className="form-control mb-3"
+                  placeholder="Brand name..."
+                  value={newBrand.name}
+                  onChange={(e) => setNewBrand({ ...newBrand, name: e.target.value })}
+                />
+                <select
+                  className="form-control mb-3"
+                  value={newBrand.category_id}
+                  onChange={(e) => setNewBrand({ ...newBrand, category_id: Number(e.target.value) })}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="d-flex justify-content-end gap-2">
+                  <button className="btn btn-secondary" onClick={() => setShowBrandModal(false)}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={addBrand}>
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= DELETE CONFIRM ================= */}
+          {deleteConfirm.id && (
+            <div
+              className="d-flex align-items-center justify-content-center"
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
+            >
+              <div className="bg-white p-4 rounded shadow" style={{ width: "350px" }}>
+                <h5 className="mb-3">Are you sure?</h5>
+                <p className="text-muted">This action cannot be undone.</p>
+                <div className="d-flex justify-content-end gap-2">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setDeleteConfirm({ type: null, id: null })}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    onClick={() =>
+                      deleteConfirm.type === "category"
+                        ? deleteCategory(deleteConfirm.id!)
+                        : deleteBrand(deleteConfirm.id!)
+                    }
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Categories;
