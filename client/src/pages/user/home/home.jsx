@@ -486,46 +486,45 @@ useEffect(() => {
              Favorite
           </button>
 
-   <button
-onClick={() => {
-  const cat = selectedProduct?.category_name?.toLowerCase() || "";
+<button
+  onClick={() => {
+    const cat = selectedProduct?.category_name?.toLowerCase() || "";
 
-  // CLOTHES / SHOES → kërko size
-  if (
-    (cat.includes("cloth") || cat.includes("shoe")) &&
-    options.sizes.length > 0 &&
-    !selectedSize
-  ) {
-    alert("Please select a size first");
-    return;
-  }
+    if (
+      (cat.includes("cloth") || cat.includes("shoe")) &&
+      options.sizes.length > 0 &&
+      !selectedSize
+    ) {
+      alert("Please select a size first");
+      return;
+    }
 
-  // ELECTRONICS → kërko memory (nëse ka)
-  if (
-    cat.includes("electronic") &&
-    options.memory.length > 0 &&
-    !selectedMemory
-  ) {
-    alert("Please select memory first");
-    return;
-  }
+    if (
+      cat.includes("electronic") &&
+      options.memory.length > 0 &&
+      !selectedMemory
+    ) {
+      alert("Please select memory first");
+      return;
+    }
 
-  // ELECTRONICS → kërko color (nëse ka)
-  if (
-    cat.includes("electronic") &&
-    options.colors.length > 0 &&
-    !selectedColor
-  ) {
-    alert("Please select a color first");
-    return;
-  }
+    if (
+      cat.includes("electronic") &&
+      options.colors.length > 0 &&
+      !selectedColor
+    ) {
+      alert("Please select a color first");
+      return;
+    }
 
-  addToCart({
-    ...selectedProduct,
-    selectedSize,
-    selectedColor,
-    selectedMemory,
-  });
+    addToCart({
+      ...selectedProduct,
+      selectedSize,
+      selectedColor,
+      selectedMemory,
+    });
+
+    alert("Product added to cart!");
   }}
   style={{
     padding: 10,
