@@ -13,10 +13,12 @@ router.get("/", async (req, res) => {
       SELECT
         p.*,
         b.name AS brand_name,
-        c.name AS category_name
+        c.name AS category_name,
+        COALESCE(SUM(v.qty), 0) AS qty
       FROM products p
       LEFT JOIN brands b ON b.id = p.brand_id
       LEFT JOIN categories c ON c.id = p.category_id
+      LEFT JOIN product_variants v ON v.product_id = p.id
       WHERE 1=1
     `;
 
@@ -37,6 +39,8 @@ router.get("/", async (req, res) => {
       query += ` AND p.brand_id = $${values.length}`;
     }
 
+    query += ` GROUP BY p.id, b.name, c.name`;
+
     // sorting
     if (sort === "price_low") query += ` ORDER BY p.sale_price ASC`;
     else if (sort === "price_high") query += ` ORDER BY p.sale_price DESC`;
@@ -44,35 +48,12 @@ router.get("/", async (req, res) => {
 
     const result = await pool.query(query, values);
 
-    const products = result.rows;
-
-    // 🔥 ADD OPTIONS FOR EACH PRODUCT
-    for (let p of products) {
-      const sizes = await pool.query(
-        "SELECT size FROM product_sizes WHERE product_id=$1",
-        [p.id]
-      );
-
-      const colors = await pool.query(
-        "SELECT color FROM product_colors WHERE product_id=$1",
-        [p.id]
-      );
-
-      const memory = await pool.query(
-        "SELECT memory FROM product_memory WHERE product_id=$1",
-        [p.id]
-      );
-
-      p.sizes = sizes.rows.map((s) => s.size);
-      p.colors = colors.rows.map((c) => c.color);
-      p.memory = memory.rows.map((m) => m.memory);
-    }
-
-    res.json(products);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 // CREATE
 router.post("/", upload.single("image"), async (req, res) => {
   try {
@@ -81,21 +62,18 @@ router.post("/", upload.single("image"), async (req, res) => {
       description,
       brand_id,
       category_id,
-      qty,
       purchase_price,
       sale_price,
       in_stock,
-      sizes,
-      colors,
-      memory,
+      variants,
     } = req.body;
 
     const image = req.file ? "/uploads/" + req.file.filename : null;
 
     const result = await pool.query(
       `INSERT INTO products
-      (name, description, brand_id, category_id, image, qty, purchase_price, sale_price, in_stock)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      (name, description, brand_id, category_id, image, purchase_price, sale_price, in_stock)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING *`,
       [
         name,
@@ -103,7 +81,6 @@ router.post("/", upload.single("image"), async (req, res) => {
         brand_id,
         category_id,
         image,
-        qty,
         purchase_price,
         sale_price,
         in_stock,
@@ -112,30 +89,15 @@ router.post("/", upload.single("image"), async (req, res) => {
 
     const product = result.rows[0];
 
-    // SAVE OPTIONS
-    if (sizes?.length) {
-      for (let s of JSON.parse(sizes)) {
+    // SAVE VARIANTS
+    if (variants) {
+      const parsed = JSON.parse(variants);
+      for (const v of parsed) {
+        if (!v.qty || v.qty <= 0) continue;
         await pool.query(
-          "INSERT INTO product_sizes(product_id, size) VALUES($1,$2)",
-          [product.id, s]
-        );
-      }
-    }
-
-    if (colors?.length) {
-      for (let c of JSON.parse(colors)) {
-        await pool.query(
-          "INSERT INTO product_colors(product_id, color) VALUES($1,$2)",
-          [product.id, c]
-        );
-      }
-    }
-
-    if (memory?.length) {
-      for (let m of JSON.parse(memory)) {
-        await pool.query(
-          "INSERT INTO product_memory(product_id, memory) VALUES($1,$2)",
-          [product.id, m]
+          `INSERT INTO product_variants (product_id, size, color, memory, qty)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [product.id, v.size || null, v.color || null, v.memory || null, v.qty]
         );
       }
     }
@@ -145,6 +107,7 @@ router.post("/", upload.single("image"), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 // UPDATE
 router.put("/:id", async (req, res) => {
   try {
@@ -199,14 +162,16 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 // DELETE
 router.delete("/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
     // delete child tables first
+    await pool.query("DELETE FROM product_variants WHERE product_id = $1", [id]);
     await pool.query("DELETE FROM product_sizes WHERE product_id = $1", [id]);
-   await pool.query("DELETE FROM product_colors WHERE product_id = $1", [id]);
+    await pool.query("DELETE FROM product_colors WHERE product_id = $1", [id]);
     await pool.query("DELETE FROM product_memory WHERE product_id = $1", [id]);
 
     // then delete product
@@ -215,7 +180,6 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
     console.log("DELETE ERROR:", err);
-
     res.status(500).json({
       message: err.message,
       detail: err.detail,

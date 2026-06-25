@@ -40,45 +40,51 @@ type Category = {
   name: string;
 };
 
+type Variant = {
+  size?: string;
+  color?: string;
+  memory?: string;
+  qty: number;
+};
+
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [showModal, setShowModal] = useState(false);
-const [brands, setBrands] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     search: "",
     category: "",
     brand: "",
     sort: "",
   });
-const [newProduct, setNewProduct] = useState({
-  name: "",
-  description: "",
-  brand_id: 0,
-  category_id: 0,
-  image: null as File | null,
-  stock: 0,
-  qty: 0,
-  purchase_price: 0,
-  sale_price: 0,
-  in_stock: true,
-
-  selectedSizes: [] as string[],
-  selectedColors: [] as string[],
-  selectedMemory: [] as string[],
-});
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    description: "",
+    brand_id: 0,
+    category_id: 0,
+    image: null as File | null,
+    stock: 0,
+    qty: 0,
+    purchase_price: 0,
+    sale_price: 0,
+    in_stock: true,
+  });
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<any>({});
-const [saleModal, setSaleModal] = useState(false);
-const [selectedProduct, setSelectedProduct] = useState<any>(null);
-const [saleQty, setSaleQty] = useState(1);
-const [deleteModal, setDeleteModal] = useState<null | number>(null);
-const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-const [currentPage, setCurrentPage] = useState(1);
-const itemsPerPage = 12;
-useEffect(() => {
-  setCurrentPage(1);
-}, [filters]);
+  const [saleModal, setSaleModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [saleQty, setSaleQty] = useState(1);
+  const [deleteModal, setDeleteModal] = useState<null | number>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
   // ================= FETCH PRODUCTS =================
   const fetchProducts = async () => {
     const res = await axios.get("/products", { params: filters });
@@ -98,126 +104,140 @@ useEffect(() => {
   useEffect(() => {
     fetchCategories();
   }, []);
-const fetchBrands = async () => {
-  const res = await axios.get("/brands");
-  setBrands(res.data);
-};
 
-useEffect(() => {
-  fetchBrands();
-}, []);
-const [sizes, setSizes] = useState<string[]>([]);
-const [colors, setColors] = useState<string[]>([]);
-const [memory, setMemory] = useState<string[]>([]);
-useEffect(() => {
-  const category = categories.find(
-    (c) => c.id === newProduct.category_id
-  );
+  const fetchBrands = async () => {
+    const res = await axios.get("/brands");
+    setBrands(res.data);
+  };
 
-  if (!category) return;
+  useEffect(() => {
+    fetchBrands();
+  }, []);
 
-  const name = category.name.toLowerCase();
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [colors, setColors] = useState<string[]>([]);
+  const [memory, setMemory] = useState<string[]>([]);
 
-  // CLOTHES
-  if (name.includes("cloth")) {
-    setSizes(["XS", "S", "M", "L", "XL", "XXL"]);
-    setColors([]);
-    setMemory([]);
-  }
+  useEffect(() => {
+    const category = categories.find(
+      (c) => c.id === newProduct.category_id
+    );
 
-  // SHOES
-  else if (name.includes("shoe")) {
-    setSizes(["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"]);
-    setColors([]);
-    setMemory([]);
-  }
+    if (!category) return;
 
-  // ELECTRONICS
-  else if (name.includes("electronic")) {
-    setSizes([]);
-    setColors(["Blue", "Silver"]);
-    setMemory(["64GB", "128GB", "256GB", "512GB", "1TB"]);
-  }
+    const name = category.name.toLowerCase();
 
-  // DEFAULT
-  else {
-    setSizes([]);
-    setColors([]);
-    setMemory([]);
-  }
-}, [newProduct.category_id, categories]);
+    // CLOTHES
+    if (name.includes("cloth")) {
+      setSizes(["XS", "S", "M", "L", "XL", "XXL"]);
+      setColors([]);
+      setMemory([]);
+    }
+
+    // SHOES
+    else if (name.includes("shoe")) {
+      setSizes(["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"]);
+      setColors([]);
+      setMemory([]);
+    }
+
+    // ELECTRONICS
+    else if (name.includes("electronic")) {
+      setSizes([]);
+      setColors(["Blue", "Silver"]);
+      setMemory(["64GB", "128GB", "256GB", "512GB", "1TB"]);
+    }
+
+    // DEFAULT
+    else {
+      setSizes([]);
+      setColors([]);
+      setMemory([]);
+    }
+
+    // Reset variants when category changes
+    setVariants([]);
+  }, [newProduct.category_id, categories]);
+
+  // ================= VARIANT HELPER =================
+  const setVariantQty = (
+    key: { size?: string; color?: string; memory?: string },
+    qty: number
+  ) => {
+    setVariants((prev) => {
+      const idx = prev.findIndex(
+        (v) => v.size === key.size && v.color === key.color && v.memory === key.memory
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], qty };
+        return next;
+      }
+      return [...prev, { ...key, qty }];
+    });
+  };
+
   // ================= ADD PRODUCT =================
-const addProduct = async () => {
-  const formData = new FormData();
+  const addProduct = async () => {
+    const formData = new FormData();
 
-  formData.append("name", newProduct.name);
-  formData.append("description", newProduct.description);
- formData.append("brand_id", String(newProduct.brand_id));
-formData.append("category_id", String(newProduct.category_id));
-formData.append("qty", String(newProduct.qty));
-formData.append("purchase_price", String(newProduct.purchase_price));
-formData.append("sale_price", String(newProduct.sale_price));
-formData.append("in_stock", String(newProduct.in_stock));
-formData.append(
-  "sizes",
-  JSON.stringify(newProduct.selectedSizes)
-);
+    formData.append("name", newProduct.name);
+    formData.append("description", newProduct.description);
+    formData.append("brand_id", String(newProduct.brand_id));
+    formData.append("category_id", String(newProduct.category_id));
+    formData.append("purchase_price", String(newProduct.purchase_price));
+    formData.append("sale_price", String(newProduct.sale_price));
+    formData.append("in_stock", String(newProduct.in_stock));
+    formData.append("variants", JSON.stringify(variants));
 
-formData.append(
-  "colors",
-  JSON.stringify(newProduct.selectedColors)
-);
+    if (newProduct.image) {
+      formData.append("image", newProduct.image as any);
+    }
 
-formData.append(
-  "memory",
-  JSON.stringify(newProduct.selectedMemory)
-);
-  if (newProduct.image) {
-    formData.append("image", newProduct.image as any);
-  }
+    await axios.post("/products", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
 
-  await axios.post("/products", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+    setVariants([]);
+    fetchProducts();
+    setShowModal(false);
+  };
 
-  fetchProducts();
-  setShowModal(false);
-};
   // ================= DELETE =================
-const deleteProduct = async (id: number) => {
-  try {
-    await axios.delete(`/products/${id}`);
-
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  } catch (err) {
-    console.log(err);
-    alert("Delete failed");
-  }
-};
+  const deleteProduct = async (id: number) => {
+    try {
+      await axios.delete(`/products/${id}`);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.log(err);
+      alert("Delete failed");
+    }
+  };
 
   // ================= EDIT =================
-const startEdit = (p: any) => {
-  setEditId(p.id);
+  const startEdit = (p: any) => {
+    setEditId(p.id);
+    setEditValue({
+      name: p.name,
+      description: p.description,
+      brand_id: p.brand_id,
+      category_id: p.category_id,
+      image: p.image,
+      qty: p.qty,
+      purchase_price: p.purchase_price,
+      sale_price: p.sale_price,
+      in_stock: p.in_stock,
+    });
+  };
 
-  setEditValue({
-    name: p.name,
-    description: p.description,
-    brand_id: p.brand_id,
-    category_id: p.category_id,
-    image: p.image,
-    qty: p.qty,
-    purchase_price: p.purchase_price,
-    sale_price: p.sale_price,
-    in_stock: p.in_stock,
-  });
-};
- const saveEdit = async () => {
-  await axios.put(`/products/${editId}`, editValue);
-  setEditId(null);
-  fetchProducts();
-};
+  const saveEdit = async () => {
+    await axios.put(`/products/${editId}`, editValue);
+    setEditId(null);
+    fetchProducts();
+  };
+
   return (
     <div className="d-flex">
       <Sidebar />
@@ -227,109 +247,109 @@ const startEdit = (p: any) => {
 
         <div className="p-4 bg-light min-vh-100">
 
-      {/* ================= TOP BAR ================= */}
-<div className="d-flex flex-wrap gap-2 align-items-center mb-4">
+          {/* ================= TOP BAR ================= */}
+          <div className="d-flex flex-wrap gap-2 align-items-center mb-4">
 
-  {/* SEARCH */}
-  <input
-    className="form-control"
-    placeholder="Search products..."
-    style={{ maxWidth: 180 }}
-    value={filters.search}
-    onChange={(e) =>
-      setFilters((prev) => ({
-        ...prev,
-        search: e.target.value,
-      }))
-    }
-  />
+            {/* SEARCH */}
+            <input
+              className="form-control"
+              placeholder="Search products..."
+              style={{ maxWidth: 180 }}
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  search: e.target.value,
+                }))
+              }
+            />
 
-  {/* CATEGORY FILTER */}
-  <select
-    className="form-control"
-    style={{ maxWidth: 180 }}
-    value={filters.category}
-    onChange={(e) =>
-      setFilters((prev) => ({
-        ...prev,
-        category: e.target.value,
-      }))
-    }
-  >
-    <option value="">All Categories</option>
-    {categories.map((c) => (
-      <option key={c.id} value={c.id}>
-        {c.name}
-      </option>
-    ))}
-  </select>
+            {/* CATEGORY FILTER */}
+            <select
+              className="form-control"
+              style={{ maxWidth: 180 }}
+              value={filters.category}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  category: e.target.value,
+                }))
+              }
+            >
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
 
-  {/* BRAND FILTER */}
-  <select
-    className="form-control"
-    style={{ maxWidth: 180 }}
-    value={filters.brand}
-    onChange={(e) =>
-      setFilters((prev) => ({
-        ...prev,
-        brand: e.target.value,
-      }))
-    }
-  >
-    <option value="">All Brands</option>
-    {brands.map((b) => (
-      <option key={b.id} value={b.id}>
-        {b.name}
-      </option>
-    ))}
-  </select>
+            {/* BRAND FILTER */}
+            <select
+              className="form-control"
+              style={{ maxWidth: 180 }}
+              value={filters.brand}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  brand: e.target.value,
+                }))
+              }
+            >
+              <option value="">All Brands</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
 
-  {/* SORT */}
-  <select
-    className="form-control"
-    style={{ maxWidth: 180 }}
-    value={filters.sort}
-    onChange={(e) =>
-      setFilters((prev) => ({
-        ...prev,
-        sort: e.target.value,
-      }))
-    }
-  >
-    <option value="">Sort by</option>
-    <option value="az">A → Z</option>
-    <option value="za">Z → A</option>
-    <option value="price_low">Price Low</option>
-    <option value="price_high">Price High</option>
-  </select>
+            {/* SORT */}
+            <select
+              className="form-control"
+              style={{ maxWidth: 180 }}
+              value={filters.sort}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  sort: e.target.value,
+                }))
+              }
+            >
+              <option value="">Sort by</option>
+              <option value="az">A → Z</option>
+              <option value="za">Z → A</option>
+              <option value="price_low">Price Low</option>
+              <option value="price_high">Price High</option>
+            </select>
 
-  {/* RESET BUTTON */}
-  <button
-    className="btn btn-outline-secondary"
-    onClick={() =>
-      setFilters({
-        search: "",
-        category: "",
-        brand: "",
-        sort: "",
-      })
-    }
-  >
-    Reset
-  </button>
+            {/* RESET BUTTON */}
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() =>
+                setFilters({
+                  search: "",
+                  category: "",
+                  brand: "",
+                  sort: "",
+                })
+              }
+            >
+              Reset
+            </button>
 
-  {/* ADD BUTTON */}
-  <button
-    className="btn btn-primary ms-auto"
-    onClick={() => setShowModal(true)}
-  >
-    + Add Product
-  </button>
+            {/* ADD BUTTON */}
+            <button
+              className="btn btn-primary ms-auto"
+              onClick={() => setShowModal(true)}
+            >
+              + Add Product
+            </button>
 
-</div>
+          </div>
 
           {/* ================= TABLE ================= */}
-           <div className="card shadow-sm border-0">
+          <div className="card shadow-sm border-0">
             <div className="table-responsive">
               <table className="table align-middle mb-0">
                 <thead>
@@ -345,181 +365,179 @@ const startEdit = (p: any) => {
                   </tr>
                 </thead>
 
-              <tbody>
-  {products
-    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-    .map((p) => (
-      <tr key={p.id}>
+                <tbody>
+                  {products
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((p) => (
+                      <tr key={p.id}>
 
-      {/* NAME */}
-      <td>
-        {editId === p.id ? (
-          <input
-            className="form-control"
-            value={editValue.name}
-            onChange={(e) =>
-              setEditValue({ ...editValue, name: e.target.value })
-            }
-          />
-        ) : (
-          p.name
-        )}
-      </td>
+                        {/* NAME */}
+                        <td>
+                          {editId === p.id ? (
+                            <input
+                              className="form-control"
+                              value={editValue.name}
+                              onChange={(e) =>
+                                setEditValue({ ...editValue, name: e.target.value })
+                              }
+                            />
+                          ) : (
+                            p.name
+                          )}
+                        </td>
 
-      {/* BRAND */}
-      <td>{p.brand_name}</td>
+                        {/* BRAND */}
+                        <td>{p.brand_name}</td>
 
+                        {/* CATEGORY */}
+                        <td>
+                          {editId === p.id ? (
+                            <select
+                              className="form-control"
+                              value={editValue.category_id}
+                              onChange={(e) =>
+                                setEditValue({
+                                  ...editValue,
+                                  category_id: Number(e.target.value),
+                                })
+                              }
+                            >
+                              {categories.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            p.category_name
+                          )}
+                        </td>
 
-      {/* CATEGORY */}
-     <td>
-  {editId === p.id ? (
-    <select
-      className="form-control"
-      value={editValue.category_id}
-      onChange={(e) =>
-        setEditValue({
-          ...editValue,
-          category_id: Number(e.target.value),
-        })
-      }
-    >
-      {categories.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.name}
-        </option>
-      ))}
-    </select>
-  ) : (
-    p.category_name
-  )}
-</td>
+                        {/* QTY */}
+                        <td>
+                          {editId === p.id ? (
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={editValue.qty ?? 0}
+                              onChange={(e) =>
+                                setEditValue({
+                                  ...editValue,
+                                  qty: Number(e.target.value),
+                                })
+                              }
+                            />
+                          ) : (
+                            p.qty !== undefined && p.qty !== null ? p.qty : "-"
+                          )}
+                        </td>
 
-      {/* QTY */}
-<td>
-  {editId === p.id ? (
-    <input
-      type="number"
-      className="form-control"
-      value={editValue.qty ?? 0}
-      onChange={(e) =>
-        setEditValue({
-          ...editValue,
-          qty: Number(e.target.value),
-        })
-      }
-    />
-  ) : (
-p.qty !== undefined && p.qty !== null ? p.qty : "-"
-  )}
-</td>
-      {/* PURCHASE PRICE */}
-      <td>
-        {editId === p.id ? (
-          <input
-            type="number"
-            className="form-control"
-            value={editValue.purchase_price}
-            onChange={(e) =>
-              setEditValue({
-                ...editValue,
-                purchase_price: Number(e.target.value),
-              })
-            }
-          />
-        ) : (
-          `${p.purchase_price} €`
-        )}
-      </td>
+                        {/* PURCHASE PRICE */}
+                        <td>
+                          {editId === p.id ? (
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={editValue.purchase_price}
+                              onChange={(e) =>
+                                setEditValue({
+                                  ...editValue,
+                                  purchase_price: Number(e.target.value),
+                                })
+                              }
+                            />
+                          ) : (
+                            `${p.purchase_price} €`
+                          )}
+                        </td>
 
-      {/* SALE PRICE */}
-      <td>
-        {editId === p.id ? (
-          <input
-            type="number"
-            className="form-control"
-            value={editValue.sale_price}
-            onChange={(e) =>
-              setEditValue({
-                ...editValue,
-                sale_price: Number(e.target.value),
-              })
-            }
-          />
-        ) : (
-          `${p.sale_price} €`
-        )}
-      </td>
+                        {/* SALE PRICE */}
+                        <td>
+                          {editId === p.id ? (
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={editValue.sale_price}
+                              onChange={(e) =>
+                                setEditValue({
+                                  ...editValue,
+                                  sale_price: Number(e.target.value),
+                                })
+                              }
+                            />
+                          ) : (
+                            `${p.sale_price} €`
+                          )}
+                        </td>
 
-      {/* STATUS */}
-      <td>
-        {p.in_stock ? (
-          <span className="badge bg-success">In</span>
-        ) : (
-          <span className="badge bg-danger">Out</span>
-        )}
-      </td>
+                        {/* STATUS */}
+                        <td>
+                          {p.in_stock ? (
+                            <span className="badge bg-success">In</span>
+                          ) : (
+                            <span className="badge bg-danger">Out</span>
+                          )}
+                        </td>
 
-      {/* ACTIONS */}
-   <td style={{ position: "relative" }}>
-  {/* 3 DOT BUTTON */}
-  <button
-    className="btn btn-light btn-sm"
-    onClick={() =>
-      setOpenMenuId(openMenuId === p.id ? null : p.id)
-    }
-  >
-    ⋮
-  </button>
+                        {/* ACTIONS */}
+                        <td style={{ position: "relative" }}>
+                          {/* 3 DOT BUTTON */}
+                          <button
+                            className="btn btn-light btn-sm"
+                            onClick={() =>
+                              setOpenMenuId(openMenuId === p.id ? null : p.id)
+                            }
+                          >
+                            ⋮
+                          </button>
 
-  {/* DROPDOWN MENU */}
-  {openMenuId === p.id && (
-    <div
-      style={{
-        position: "absolute",
-        right: 0,
-        top: "100%",
-        background: "#fff",
-        border: "1px solid #ddd",
-        borderRadius: 6,
-        boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-        zIndex: 999,
-        minWidth: 140,
-        padding: "5px",
-      }}
-    >
-      {/* EDIT (same logic as your button) */}
-      {editId === p.id ? (
-        <SaveButton
-          onClick={() => {
-            saveEdit();
-            setOpenMenuId(null);
-          }}
-        />
-      ) : (
-        <button
-          className="dropdown-item"
-          onClick={() => {
-            startEdit(p);
-            setOpenMenuId(null);
-          }}
-        >
-          Edit
-        </button>
-      )}
+                          {/* DROPDOWN MENU */}
+                          {openMenuId === p.id && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                right: 0,
+                                top: "100%",
+                                background: "#fff",
+                                border: "1px solid #ddd",
+                                borderRadius: 6,
+                                boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                                zIndex: 999,
+                                minWidth: 140,
+                                padding: "5px",
+                              }}
+                            >
+                              {editId === p.id ? (
+                                <SaveButton
+                                  onClick={() => {
+                                    saveEdit();
+                                    setOpenMenuId(null);
+                                  }}
+                                />
+                              ) : (
+                                <button
+                                  className="dropdown-item"
+                                  onClick={() => {
+                                    startEdit(p);
+                                    setOpenMenuId(null);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              )}
 
-      {/* DELETE (same modal logic) */}
-<button
-  className="dropdown-item text-danger"
-  onClick={() => setDeleteModal(p.id)}
->
-  Delete
-</button>
-    </div>
-  )}
-</td>
-    </tr>
-  ))}
-</tbody>
+                              <button
+                                className="dropdown-item text-danger"
+                                onClick={() => setDeleteModal(p.id)}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
 
               </table>
             </div>
@@ -535,7 +553,7 @@ p.qty !== undefined && p.qty !== null ? p.qty : "-"
                 background: "rgba(0,0,0,0.5)",
               }}
             >
-              <div className="bg-white p-4 rounded" style={{ width: 550 }}>
+              <div className="bg-white p-4 rounded" style={{ width: 550, maxHeight: "90vh", overflowY: "auto" }}>
 
                 <h5>Add Product</h5>
 
@@ -555,87 +573,77 @@ p.qty !== undefined && p.qty !== null ? p.qty : "-"
                   }
                 />
 
-            <select
-  className="form-control my-2"
-  value={newProduct.brand_id}
-  onChange={(e) =>
-    setNewProduct({
-      ...newProduct,
-      brand_id: Number(e.target.value),
-    })
-  }
->
-  <option value="">Select Brand</option>
-  {brands.map((b) => (
-    <option key={b.id} value={b.id}>
-      {b.name}
-    </option>
-  ))}
-</select>
+                <select
+                  className="form-control my-2"
+                  value={newProduct.brand_id}
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      brand_id: Number(e.target.value),
+                    })
+                  }
+                >
+                  <option value="">Select Brand</option>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
 
-             <select
-  className="form-control my-2"
-  value={newProduct.category_id}
-  onChange={(e) =>
-    setNewProduct({
-      ...newProduct,
-      category_id: Number(e.target.value),
-    })
-  }
->
-  <option value="">Select Category</option>
-  {categories.map((c) => (
-    <option key={c.id} value={c.id}>
-      {c.name}
-    </option>
-  ))}
-</select>
-<input
-  type="file"
-  className="form-control my-2"
-  onChange={(e) => {
-    const file = e.target.files?.[0];
+                <select
+                  className="form-control my-2"
+                  value={newProduct.category_id}
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      category_id: Number(e.target.value),
+                    })
+                  }
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
 
-    setNewProduct({
-      ...newProduct,
-      image: file || null,
-    });
-  }}
-/>   
+                <input
+                  type="file"
+                  className="form-control my-2"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setNewProduct({
+                      ...newProduct,
+                      image: file || null,
+                    });
+                  }}
+                />
 
                 <input
                   type="number"
                   className="form-control my-2"
-                  placeholder="Qty"
+                  placeholder="Purchase Price"
                   onChange={(e) =>
                     setNewProduct({
                       ...newProduct,
-                      qty: Number(e.target.value),
+                      purchase_price: Number(e.target.value),
                     })
                   }
                 />
-<input
-  type="number"
-  className="form-control my-2"
-  placeholder="Purchase Price"
-  onChange={(e) =>
-    setNewProduct({
-      ...newProduct,
-      purchase_price: Number(e.target.value),
-    })
-  }
-/>
-               <input
-  type="number"
-  className="form-control my-2"
-  placeholder="Sale Price"
-  onChange={(e) =>
-    setNewProduct({
-      ...newProduct,
-      sale_price: Number(e.target.value),
-    })
-  }
-/>
+
+                <input
+                  type="number"
+                  className="form-control my-2"
+                  placeholder="Sale Price"
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      sale_price: Number(e.target.value),
+                    })
+                  }
+                />
 
                 <div className="form-check my-2">
                   <input
@@ -650,90 +658,84 @@ p.qty !== undefined && p.qty !== null ? p.qty : "-"
                   />
                   <label>In Stock</label>
                 </div>
-{sizes.length > 0 && (
-  <div>
-    <label>Sizes</label>
-    <div className="d-flex flex-wrap gap-2">
-      {sizes.map((s) => (
-        <button
-          type="button"
-          key={s}
-          className={`btn btn-sm ${
-            newProduct.selectedSizes.includes(s)
-              ? "btn-primary"
-              : "btn-outline-primary"
-          }`}
-          onClick={() => {
-            setNewProduct((prev) => ({
-              ...prev,
-              selectedSizes: prev.selectedSizes.includes(s)
-                ? prev.selectedSizes.filter((x) => x !== s)
-                : [...prev.selectedSizes, s],
-            }));
-          }}
-        >
-          {s}
-        </button>
-      ))}
-    </div>
-  </div>
-)}
-{colors.length > 0 && (
-  <div className="mt-2">
-    <label>Colors</label>
-    <div className="d-flex gap-2">
-      {colors.map((c) => (
-        <button
-          type="button"
-          key={c}
-          className={`btn btn-sm ${
-            newProduct.selectedColors.includes(c)
-              ? "btn-dark"
-              : "btn-outline-dark"
-          }`}
-          onClick={() => {
-            setNewProduct((prev) => ({
-              ...prev,
-              selectedColors: prev.selectedColors.includes(c)
-                ? prev.selectedColors.filter((x) => x !== c)
-                : [...prev.selectedColors, c],
-            }));
-          }}
-        >
-          {c}
-        </button>
-      ))}
-    </div>
-  </div>
-)}
-{memory.length > 0 && (
-  <div className="mt-2">
-    <label>Memory</label>
-    <div className="d-flex flex-wrap gap-2">
-      {memory.map((m) => (
-        <button
-          type="button"
-          key={m}
-          className={`btn btn-sm ${
-            newProduct.selectedMemory.includes(m)
-              ? "btn-success"
-              : "btn-outline-success"
-          }`}
-          onClick={() => {
-            setNewProduct((prev) => ({
-              ...prev,
-              selectedMemory: prev.selectedMemory.includes(m)
-                ? prev.selectedMemory.filter((x) => x !== m)
-                : [...prev.selectedMemory, m],
-            }));
-          }}
-        >
-          {m}
-        </button>
-      ))}
-    </div>
-  </div>
-)}
+
+                {/* ================= CLOTHES / SHOES: size + qty per size ================= */}
+                {sizes.length > 0 && (
+                  <div className="mt-2">
+                    <label>Sizes & Qty</label>
+                    <div className="d-flex flex-wrap gap-2 mt-1">
+                      {sizes.map((s) => {
+                        const v = variants.find((x) => x.size === s);
+                        return (
+                          <div
+                            key={s}
+                            className="d-flex align-items-center gap-1 border rounded px-2 py-1"
+                          >
+                            <span style={{ minWidth: 28 }}>{s}</span>
+                            <input
+                              type="number"
+                              min={0}
+                              style={{ width: 56 }}
+                              className="form-control form-control-sm"
+                              placeholder="qty"
+                              value={v?.qty ?? ""}
+                              onChange={(e) =>
+                                setVariantQty({ size: s }, Number(e.target.value))
+                              }
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ================= ELECTRONICS: memory x color grid ================= */}
+                {memory.length > 0 && colors.length > 0 && (
+                  <div className="mt-2">
+                    <label>Memory × Color Qty</label>
+                    <table className="table table-sm mt-1">
+                      <thead>
+                        <tr>
+                          <th></th>
+                          {colors.map((c) => (
+                            <th key={c}>{c}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memory.map((m) => (
+                          <tr key={m}>
+                            <td><strong>{m}</strong></td>
+                            {colors.map((c) => {
+                              const v = variants.find(
+                                (x) => x.memory === m && x.color === c
+                              );
+                              return (
+                                <td key={c}>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    style={{ width: 64 }}
+                                    className="form-control form-control-sm"
+                                    placeholder="0"
+                                    value={v?.qty ?? ""}
+                                    onChange={(e) =>
+                                      setVariantQty(
+                                        { memory: m, color: c },
+                                        Number(e.target.value)
+                                      )
+                                    }
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 <div className="d-flex justify-content-end gap-2 mt-3">
                   <button
@@ -754,66 +756,71 @@ p.qty !== undefined && p.qty !== null ? p.qty : "-"
               </div>
             </div>
           )}
+
+          {/* ================= PAGINATION ================= */}
           <div className="d-flex justify-content-center mt-3 gap-2">
-  <button
-    className="btn btn-outline-secondary btn-sm"
-    disabled={currentPage === 1}
-    onClick={() => setCurrentPage((prev) => prev - 1)}
-  >
-    Prev
-  </button>
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+            >
+              Prev
+            </button>
 
-  <span className="align-self-center">
-    Page {currentPage}
-  </span>
+            <span className="align-self-center">
+              Page {currentPage}
+            </span>
 
-  <button
-    className="btn btn-outline-secondary btn-sm"
-    disabled={products.length < itemsPerPage}
-    onClick={() => setCurrentPage((prev) => prev + 1)}
-  >
-    Next
-  </button>
-</div>
-{deleteModal && (
-  <div
-    className="d-flex align-items-center justify-content-center"
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.5)",
-      zIndex: 9999,
-    }}
-  >
-    <div className="bg-white p-4 rounded shadow" style={{ width: 350 }}>
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              disabled={products.length < itemsPerPage}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+            >
+              Next
+            </button>
+          </div>
 
-      <h5>Confirm Delete</h5>
+          {/* ================= DELETE MODAL ================= */}
+          {deleteModal && (
+            <div
+              className="d-flex align-items-center justify-content-center"
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.5)",
+                zIndex: 9999,
+              }}
+            >
+              <div className="bg-white p-4 rounded shadow" style={{ width: 350 }}>
 
-      <p>Are you sure you want to delete this product?</p>
+                <h5>Confirm Delete</h5>
 
-      <div className="d-flex justify-content-end gap-2">
+                <p>Are you sure you want to delete this product?</p>
 
-        <button
-          className="btn btn-secondary"
-          onClick={() => setDeleteModal(null)}
-        >
-          Cancel
-        </button>
+                <div className="d-flex justify-content-end gap-2">
 
-        <button
-          className="btn btn-danger"
-          onClick={async () => {
-            await deleteProduct(deleteModal);
-            setDeleteModal(null);
-          }}
-        >
-          Delete
-        </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setDeleteModal(null)}
+                  >
+                    Cancel
+                  </button>
 
-      </div>
-    </div>
-  </div>
-)}
+                  <button
+                    className="btn btn-danger"
+                    onClick={async () => {
+                      await deleteProduct(deleteModal);
+                      setDeleteModal(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
