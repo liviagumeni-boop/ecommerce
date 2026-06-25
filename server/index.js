@@ -6,7 +6,11 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(passport.initialize());
 
@@ -32,7 +36,7 @@ app.use("/api/coupons", couponsRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/payment", paymentRoutes);
+app.use("/api/payment", paymentRoutes); 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", loginRoutes);
 app.use("/api/auth", googleRoutes);
