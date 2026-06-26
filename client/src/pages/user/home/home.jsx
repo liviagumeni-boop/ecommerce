@@ -16,6 +16,20 @@ function Home() {
   const { addToCart } = useCart();
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const role = params.get("role");
+    if (token && role) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+      window.history.replaceState({}, "", "/");
+      if (role === "admin") {
+        window.location.href = "/admin";
+      }
+    }
+  }, []);
+
   const [category, setCategory] = useState("All");
   const [brand, setBrand] = useState("All");
   const [search, setSearch] = useState("");

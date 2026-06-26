@@ -21,8 +21,9 @@ router.get(
       { expiresIn: "7d" }
     );
 
+   const clientUrl = process.env.CLIENT_URL || "https://ecommerce-qhno.vercel.app";
    res.redirect(
-  `http://localhost:5173/?token=${token}&role=${req.user.role}`
+  `${clientUrl}/?token=${token}&role=${req.user.role}`
 );
   }
 );
