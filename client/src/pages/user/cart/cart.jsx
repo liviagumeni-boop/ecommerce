@@ -98,7 +98,7 @@ const discountAmount = couponData
                 <img
   src={
     item.image
-      ? `http://localhost:5000${item.image}`
+      ? `https://ecommerce-x4el.onrender.com${item.image}`
       : "https://placehold.co/400x300?text=No+Image"
   }
   style={{

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "axios";
+import api from "../../../api/axios";
 import { useParams } from "react-router-dom";
 
 const ProductDetails = () => {
@@ -8,7 +8,7 @@ const ProductDetails = () => {
 
   useEffect(() => {
     api
-      .get(`http://localhost:5000/api/products/${id}`)
+      .get(`/products/${id}`)
       .then((res) => setProduct(res.data))
       .catch((err) => console.log(err));
   }, [id]);

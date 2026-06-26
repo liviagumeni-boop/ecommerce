@@ -289,7 +289,7 @@ useEffect(() => {
 <img
   src={
     p.image
-      ? `http://localhost:5000${p.image}`
+      ? `https://ecommerce-x4el.onrender.com${p.image}`
       : "https://placehold.co/400x300?text=No+Image"
   }
   style={{
@@ -343,7 +343,7 @@ useEffect(() => {
 <img
   src={
     p.image
-      ? `http://localhost:5000${p.image}`
+      ? `https://ecommerce-x4el.onrender.com${p.image}`
       : `https://placehold.co/300x200?text=${p.category_name}`
   }
   style={{
@@ -394,7 +394,7 @@ useEffect(() => {
       <img
         src={
           selectedProduct.image
-            ? `http://localhost:5000${selectedProduct.image}`
+            ? `https://ecommerce-x4el.onrender.com${selectedProduct.image}`
             : "https://placehold.co/400x300"
         }
         style={{

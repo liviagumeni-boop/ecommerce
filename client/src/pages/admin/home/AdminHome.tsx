@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "axios";
+import api from "../../../api/axios";
 
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
@@ -46,9 +46,7 @@ export default function AdminHome() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await api.get<DashboardData>(
-        "http://localhost:5000/api/admin/dashboard"
-        );
+        const res = await api.get<DashboardData>("/admin/dashboard");
         setDashboard(res.data);
       } catch (err) {
         console.error("Dashboard error:", err);

@@ -240,7 +240,7 @@ const { addToCart } = useCart();
           <img
             src={
               p.image
-                ? `http://localhost:5000${p.image}`
+                ? `https://ecommerce-x4el.onrender.com${p.image}`
                 : "https://placehold.co/100x100"
             }
             style={{

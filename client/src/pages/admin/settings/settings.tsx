@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "axios";
+import api from "../../../api/axios";
 
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
@@ -39,9 +39,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const fetchStore = async () => {
       try {
-        const res = await api.get(
-          "http://localhost:5000/api/store-settings"
-        );
+        const res = await api.get("/store-settings");
 
         setStoreName(res.data.store_name || "");
         setEmail(res.data.email || "");
@@ -55,13 +53,7 @@ const Settings: React.FC = () => {
 
   const handleSaveStore = async () => {
     try {
-      await api.put(
-        "http://localhost:5000/api/store-settings",
-        {
-          store_name: storeName,
-          email,
-        }
-      );
+      await api.put("/store-settings", { store_name: storeName, email });
 
       alert("Store settings saved");
     } catch (err) {
