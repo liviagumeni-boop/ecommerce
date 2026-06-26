@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../../api/axios";
+import api, { BACKEND_URL } from "../../../api/axios";
 import { useFavorites } from "../../../componets/common/FavoritesContext";
 import { useCart } from "../../../componets/common/Cartcontext";
 function Profile() {
@@ -240,7 +240,7 @@ const { addToCart } = useCart();
           <img
             src={
               p.image
-                ? `https://ecommerce-x4el.onrender.com${p.image}`
+                ? `${BACKEND_URL}${p.image}`
                 : "https://placehold.co/100x100"
             }
             style={{

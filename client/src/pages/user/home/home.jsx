@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "../../../api/axios";
+import api, { BACKEND_URL } from "../../../api/axios";
 import {
   FaHeart,
   FaShoppingCart,
@@ -289,7 +289,7 @@ useEffect(() => {
 <img
   src={
     p.image
-      ? `https://ecommerce-x4el.onrender.com${p.image}`
+      ? `${BACKEND_URL}${p.image}`
       : "https://placehold.co/400x300?text=No+Image"
   }
   style={{
@@ -343,7 +343,7 @@ useEffect(() => {
 <img
   src={
     p.image
-      ? `https://ecommerce-x4el.onrender.com${p.image}`
+      ? `${BACKEND_URL}${p.image}`
       : `https://placehold.co/300x200?text=${p.category_name}`
   }
   style={{
@@ -394,7 +394,7 @@ useEffect(() => {
       <img
         src={
           selectedProduct.image
-            ? `https://ecommerce-x4el.onrender.com${selectedProduct.image}`
+            ? `${BACKEND_URL}${selectedProduct.image}`
             : "https://placehold.co/400x300"
         }
         style={{

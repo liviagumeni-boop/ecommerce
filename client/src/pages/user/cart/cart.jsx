@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FaTrash, FaPlus, FaMinus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../../componets/common/Cartcontext";
-import api from "../../../api/axios";
+import api, { BACKEND_URL } from "../../../api/axios";
 const Cart = () => {
   const navigate = useNavigate();
 
@@ -98,7 +98,7 @@ const discountAmount = couponData
                 <img
   src={
     item.image
-      ? `https://ecommerce-x4el.onrender.com${item.image}`
+      ? `${BACKEND_URL}${item.image}`
       : "https://placehold.co/400x300?text=No+Image"
   }
   style={{
