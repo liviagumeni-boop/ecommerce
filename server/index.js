@@ -6,8 +6,19 @@ require("dotenv").config();
 
 const app = express();
 
+const allowedOrigins = [
+  "https://ecommerce-qhno.vercel.app",
+  "http://localhost:5173",
+];
+
 const corsOptions = {
-  origin: "https://ecommerce-qhno.vercel.app",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "userid"],
