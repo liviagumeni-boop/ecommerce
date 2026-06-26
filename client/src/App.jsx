@@ -18,7 +18,7 @@ import PaymentFailed from "./pages/user/home/PayemtFailed";
 
 // ADMIN PAGES
 import Products from "./pages/admin/products/Products";
-import Categories from "./pages/admin/categories/Categories";
+import Categories from "./pages/admin/categories/categories";
 import Settings from "./pages/admin/settings/settings";
 import AdminHome from "./pages/admin/home/AdminHome";
 import Orders from "./pages/admin/sales/Orders";
