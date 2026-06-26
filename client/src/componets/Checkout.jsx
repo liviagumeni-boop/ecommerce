@@ -1,11 +1,11 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "axios";
 
 export default function Checkout() {
   const [amount, setAmount] = useState(10);
 
   const pay = async () => {
-    const res = await axios.post(
+    const res = await api.post(
       "http://localhost:5000/api/payment/create-payment-intent",
       { amount }
     );

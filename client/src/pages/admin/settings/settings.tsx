@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "axios";
 
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
@@ -39,7 +39,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const fetchStore = async () => {
       try {
-        const res = await axios.get(
+        const res = await api.get(
           "http://localhost:5000/api/store-settings"
         );
 
@@ -55,7 +55,7 @@ const Settings: React.FC = () => {
 
   const handleSaveStore = async () => {
     try {
-      await axios.put(
+      await api.put(
         "http://localhost:5000/api/store-settings",
         {
           store_name: storeName,

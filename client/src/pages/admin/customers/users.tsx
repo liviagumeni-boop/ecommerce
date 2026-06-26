@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import { FaTrash, FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -25,7 +25,7 @@ const Users: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("/users/admin");
+      const res = await api.get("/users/admin");
       setUsers(res.data);
     } catch (err) {
       console.log(err);
@@ -34,7 +34,7 @@ const Users: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`/users/${id}`);
+      await api.delete(`/users/${id}`);
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (err) {
       console.log(err);

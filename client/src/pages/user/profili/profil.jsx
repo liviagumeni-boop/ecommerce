@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 import { useFavorites } from "../../../componets/common/FavoritesContext";
 import { useCart } from "../../../componets/common/Cartcontext";
 function Profile() {
@@ -45,7 +45,7 @@ const { addToCart } = useCart();
     if (!userId) return;
 
     const fetchProfile = async () => {
-      const res = await axios.get("/users/me", {
+      const res = await api.get("/users/me", {
         headers: { userid: userId },
       });
 
@@ -54,7 +54,7 @@ const { addToCart } = useCart();
     };
 
     const fetchOrders = async () => {
-      const res = await axios.get("/users/me/orders", {
+      const res = await api.get("/users/me/orders", {
         headers: { userid: userId },
       });
 
@@ -67,7 +67,7 @@ const { addToCart } = useCart();
 
   /* ================= SAVE PROFILE ================= */
   const saveProfile = async () => {
-    const res = await axios.put(
+    const res = await api.put(
       "/users/me",
       {
         name: temp.name,
@@ -87,7 +87,7 @@ const { addToCart } = useCart();
 
   /* ================= SAVE ADDRESS ================= */
   const saveAddress = async () => {
-    const res = await axios.put(
+    const res = await api.put(
       "/users/me/address",
       { address: temp.address },
       { headers: { userid: userId } }
@@ -106,7 +106,7 @@ const { addToCart } = useCart();
     if (passwords.new !== passwords.confirm)
       return alert("Passwords don't match");
 
-    await axios.put(
+    await api.put(
       "/users/me/password",
       {
         old: passwords.old,

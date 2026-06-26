@@ -14,7 +14,7 @@ import {
   SaveButton,
 } from "../../../componets/ui/button";
 
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 
 type Product = {
   id: number;
@@ -87,13 +87,13 @@ const Products: React.FC = () => {
 
   // ================= FETCH PRODUCTS =================
   const fetchProducts = async () => {
-    const res = await axios.get("/products", { params: filters });
+    const res = await api.get("/products", { params: filters });
     setProducts(res.data);
   };
 
   // ================= FETCH CATEGORIES =================
   const fetchCategories = async () => {
-    const res = await axios.get("/categories");
+    const res = await api.get("/categories");
     setCategories(res.data);
   };
 
@@ -106,7 +106,7 @@ const Products: React.FC = () => {
   }, []);
 
   const fetchBrands = async () => {
-    const res = await axios.get("/brands");
+    const res = await api.get("/brands");
     setBrands(res.data);
   };
 
@@ -194,7 +194,7 @@ const Products: React.FC = () => {
       formData.append("image", newProduct.image as any);
     }
 
-    await axios.post("/products", formData, {
+    await api.post("/products", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -208,7 +208,7 @@ const Products: React.FC = () => {
   // ================= DELETE =================
   const deleteProduct = async (id: number) => {
     try {
-      await axios.delete(`/products/${id}`);
+      await api.delete(`/products/${id}`);
       setProducts((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       console.log(err);
@@ -233,7 +233,7 @@ const Products: React.FC = () => {
   };
 
   const saveEdit = async () => {
-    await axios.put(`/products/${editId}`, editValue);
+    await api.put(`/products/${editId}`, editValue);
     setEditId(null);
     fetchProducts();
   };

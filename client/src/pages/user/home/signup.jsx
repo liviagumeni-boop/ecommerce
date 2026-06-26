@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 import SignupForm from "../../../componets/forms/SingupForm";
 
 function Signup() {
@@ -8,7 +8,7 @@ function Signup() {
 
   const handleSignup = async (data) => {
     try {
-      const res = await axios.post("/auth/signup", data);
+      const res = await api.post("/auth/signup", data);
 
       console.log("Signup success:", res.data);
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "axios";
 
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
@@ -46,7 +46,7 @@ export default function AdminHome() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get<DashboardData>(
+        const res = await api.get<DashboardData>(
         "http://localhost:5000/api/admin/dashboard"
         );
         setDashboard(res.data);

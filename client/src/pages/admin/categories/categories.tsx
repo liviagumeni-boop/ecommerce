@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 
 /* ================= TYPES ================= */
 type Category = {
@@ -55,12 +55,12 @@ const [openMenu, setOpenMenu] = useState<{
 
   /* ================= LOAD ================= */
   const fetchCategories = async () => {
-    const res = await axios.get("/categories");
+    const res = await api.get("/categories");
     setCategories(res.data);
   };
 
   const fetchBrands = async () => {
-    const res = await axios.get("/brands");
+    const res = await api.get("/brands");
     setBrands(res.data);
   };
 
@@ -72,7 +72,7 @@ const [openMenu, setOpenMenu] = useState<{
   /* ================= CATEGORY CRUD ================= */
   const addCategory = async () => {
     if (!newCategory.trim()) return;
-    await axios.post("/categories", { name: newCategory });
+    await api.post("/categories", { name: newCategory });
     setNewCategory("");
     setShowCategoryModal(false);
     fetchCategories();
@@ -80,14 +80,14 @@ const [openMenu, setOpenMenu] = useState<{
 
   const updateCategory = async () => {
     if (!editCategoryId) return;
-    await axios.put(`/categories/${editCategoryId}`, { name: editCategoryValue });
+    await api.put(`/categories/${editCategoryId}`, { name: editCategoryValue });
     setEditCategoryId(null);
     setEditCategoryValue("");
     fetchCategories();
   };
 
   const deleteCategory = async (id: number) => {
-    await axios.delete(`/categories/${id}`);
+    await api.delete(`/categories/${id}`);
     setDeleteConfirm({ type: null, id: null });
     fetchCategories();
   };
@@ -95,7 +95,7 @@ const [openMenu, setOpenMenu] = useState<{
   /* ================= BRAND CRUD ================= */
   const addBrand = async () => {
     if (!newBrand.name || !newBrand.category_id) return;
-    await axios.post("/brands", newBrand);
+    await api.post("/brands", newBrand);
     setNewBrand({ name: "", category_id: 0 });
     setShowBrandModal(false);
     fetchBrands();
@@ -103,7 +103,7 @@ const [openMenu, setOpenMenu] = useState<{
 
   const updateBrand = async () => {
     if (!editBrandId) return;
-    await axios.put(`/brands/${editBrandId}`, {
+    await api.put(`/brands/${editBrandId}`, {
       name: editBrandValue,
       category_id: brands.find((b) => b.id === editBrandId)?.category_id,
     });
@@ -113,7 +113,7 @@ const [openMenu, setOpenMenu] = useState<{
   };
 
   const deleteBrand = async (id: number) => {
-    await axios.delete(`/brands/${id}`);
+    await api.delete(`/brands/${id}`);
     setDeleteConfirm({ type: null, id: null });
     fetchBrands();
   };

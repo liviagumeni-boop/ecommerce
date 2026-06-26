@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 import {
   FaHeart,
   FaShoppingCart,
@@ -62,17 +62,17 @@ useEffect(() => {
 }, [carousel.length]);
 
 const fetchProducts = async () => {
-  const res = await axios.get("/products");
+  const res = await api.get("/products");
   setProducts(res.data);
 };
 
 const fetchCategories = async () => {
-  const res = await axios.get("/categories");
+  const res = await api.get("/categories");
   setCategories(res.data);
 };
 
 const fetchBrands = async () => {
-  const res = await axios.get("/brands");
+  const res = await api.get("/brands");
   setBrands(res.data);
 };
 

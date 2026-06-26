@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FaTrash, FaPlus, FaMinus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../../componets/common/Cartcontext";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 const Cart = () => {
   const navigate = useNavigate();
 
@@ -21,7 +21,7 @@ const applyCoupon = async () => {
 
     const code = coupon.trim().toUpperCase();
 
-    const res = await axios.get(`/coupons/${code}`);
+    const res = await api.get(`/coupons/${code}`);
 
     setCouponData(res.data);
   } catch (err) {

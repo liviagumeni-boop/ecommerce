@@ -1,10 +1,10 @@
-import axios from "./axios";
+import api from "./axios";
 
 export const getProducts = (params) =>
-  axios.get("/products", { params });
+  api.get("/products", { params });
 
 export const createProduct = (data) =>
-  axios.post("/products", data);
+  api.post("/products", data);
 
 export const deleteProduct = (id) =>
-  axios.delete(`/products/${id}`);
+  api.delete(`/products/${id}`);

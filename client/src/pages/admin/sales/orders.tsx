@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
-import axios from "../../../api/axios";
+import api from "../../../api/axios";
 
 /* ================= TYPES ================= */
 type Order = {
@@ -33,7 +33,7 @@ const Orders: React.FC = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await axios.get("/orders");
+        const res = await api.get("/orders");
         setOrders(res.data);
       } catch (err) {
         console.log(err);
@@ -48,7 +48,7 @@ const markDelivered = async (id: number) => {
   try {
     console.log("MARKING DELIVERED:", id);
 
-    const res = await axios.patch(`/orders/${id}`, {
+    const res = await api.patch(`/orders/${id}`, {
       status: "delivered",
     });
 
