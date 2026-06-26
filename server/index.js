@@ -7,7 +7,7 @@ require("dotenv").config();
 const app = express();
 
 const corsOptions = {
-  origin: "https://ecommerce-fm6i.vercel.app",
+  origin: "https://ecommerce-qhno.vercel.app",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
