@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://ecommerce-x4el.onrender.com/api",  // hardcoded temporarily
+  baseURL: "https://ecommerce-366p.onrender.com",  // hardcoded temporarily
   headers: {
     "Content-Type": "application/json",
   },
