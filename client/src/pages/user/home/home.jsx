@@ -53,12 +53,13 @@ const [selectedProduct, setSelectedProduct] = useState(null);
     if (isFav(product.id)) removeFromFavorites(product.id);
     else addToFavorites(product);
   };
+useEffect(() => {
+  const timer = setInterval(() => {
+    setSlide((prev) => (prev + 1) % carousel.length);
+  }, 3000);
 
- useEffect(() => {
-  fetchProducts();
-  fetchCategories();
-  fetchBrands();
-}, []);
+  return () => clearInterval(timer);
+}, [carousel.length]);
 
 const fetchProducts = async () => {
   const res = await axios.get("/products");

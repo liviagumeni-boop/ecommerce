@@ -6,7 +6,7 @@ import Header from "./layout/header";
 import Footer from "./layout/footer";
 
 // USER PAGES
-import Home from "./pages/user/home/Home";
+import Home from "./pages/user/home/home";
 import Cart from "./pages/user/cart/Cart";
 import Checkout from "./pages/user/payment/checkout";
 import Profile from "./pages/user/profili/Profil";
