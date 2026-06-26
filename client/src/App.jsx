@@ -7,9 +7,9 @@ import Footer from "./layout/footer";
 
 // USER PAGES
 import Home from "./pages/user/home/home";
-import Cart from "./pages/user/cart/Cart";
+import Cart from "./pages/user/cart/cart";
 import Checkout from "./pages/user/payment/checkout";
-import Profile from "./pages/user/profili/Profil";
+import Profile from "./pages/user/profili/profil";
 import Login from "./pages/user/home/login";
 import UserOrders from "./pages/user/order/order";
 import Signup from "./pages/user/home/signup";
@@ -17,11 +17,11 @@ import PaymentSuccess from "./pages/user/home/PaymentSuccess";
 import PaymentFailed from "./pages/user/home/PayemtFailed";
 
 // ADMIN PAGES
-import Products from "./pages/admin/products/Products";
+import Products from "./pages/admin/products/products";
 import Categories from "./pages/admin/categories/categories";
 import Settings from "./pages/admin/settings/settings";
 import AdminHome from "./pages/admin/home/AdminHome";
-import Orders from "./pages/admin/sales/Orders";
+import Orders from "./pages/admin/sales/orders";
 import Users from "./pages/admin/customers/users";
 
 // PROTECTED ROUTE
