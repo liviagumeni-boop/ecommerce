@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./componets/common/Cartcontext";
 import { FavoritesProvider } from "./componets/common/FavoritesContext";
 
-import Header from "./layout/Header";
+import Header from "./layout/header";
 import Footer from "./layout/Footer";
 
 // USER PAGES
