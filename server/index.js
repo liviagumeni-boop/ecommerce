@@ -6,16 +6,18 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors({
+const corsOptions = {
   origin: "https://ecommerce-fm6i.vercel.app",
   credentials: true,
-}));
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
-
-// ADD THIS - to verify the env var is loaded
-console.log("CLIENT_URL:", process.env.CLIENT_URL);
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
+app.use(express.raw({ type: "application/json" }));
 app.use(passport.initialize());
 
 // ROUTES
@@ -40,7 +42,7 @@ app.use("/api/coupons", couponsRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/payment", paymentRoutes); 
+app.use("/api/payment", paymentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", loginRoutes);
 app.use("/api/auth", googleRoutes);
@@ -48,7 +50,6 @@ app.use("/api/categories", categoriesRoutes);
 app.use("/api/auth", signupRoutes);
 
 app.use("/uploads", express.static("uploads"));
-app.use(express.raw({ type: "application/json" }));
 
 app.get("/", async (req, res) => {
   try {
