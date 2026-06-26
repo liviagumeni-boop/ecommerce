@@ -11,6 +11,10 @@ app.use(cors({
   credentials: true,
 }));
 
+
+// ADD THIS - to verify the env var is loaded
+console.log("CLIENT_URL:", process.env.CLIENT_URL);
+
 app.use(express.json());
 app.use(passport.initialize());
 

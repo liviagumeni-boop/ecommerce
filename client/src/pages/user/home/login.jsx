@@ -26,7 +26,8 @@ localStorage.setItem("role", user.role);
 };
 
 const loginWithGoogle = () => {
-window.location.href = "http://localhost:5000/api/auth/google";
+//window.location.href = "http://localhost:5000/api/auth/google";
+window.location.href = "https://ecommerce-x4el.onrender.com/api/auth/google";
 };
 
   return (
