@@ -26,12 +26,15 @@ const Categories: React.FC = () => {
 
   const [newCategory, setNewCategory] = useState("");
   const [newBrand, setNewBrand] = useState({ name: "", category_id: 0 });
+const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+const [showEditBrandModal, setShowEditBrandModal] = useState(false);
 
-  const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
-  const [editCategoryValue, setEditCategoryValue] = useState("");
+const [editCategoryId, setEditCategoryId] = useState<number | null>(null);
+const [editCategoryValue, setEditCategoryValue] = useState("");
 
-  const [editBrandId, setEditBrandId] = useState<number | null>(null);
-  const [editBrandValue, setEditBrandValue] = useState("");
+const [editBrandId, setEditBrandId] = useState<number | null>(null);
+const [editBrandValue, setEditBrandValue] = useState("");
+const [editBrandCategory, setEditBrandCategory] = useState(0);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "category" | "brand" | null;
@@ -161,14 +164,7 @@ const dropdownStyle: React.CSSProperties = {
                   .map((c) => (
                     <tr key={c.id}>
                       <td>
-                        {editCategoryId === c.id ? (
-                          <input
-                            value={editCategoryValue}
-                            onChange={(e) => setEditCategoryValue(e.target.value)}
-                          />
-                        ) : (
-                          c.name
-                        )}
+                      {c.name}
                       </td>
                    <td style={{ position: "relative", textAlign: "right" }}>
                         {/* 3 DOT BUTTON */}
@@ -185,42 +181,32 @@ const dropdownStyle: React.CSSProperties = {
                           ⋮
                         </button>
 
-                        {/* DROPDOWN */}
-                       {openMenu?.id === c.id && openMenu.type === "category" && (
+                      {/* DROPDOWN */}
+{openMenu?.id === c.id && openMenu.type === "category" && (
   <div onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
-                            {editCategoryId === c.id ? (
-                              <button
-                                className="dropdown-item"
-                                onClick={() => {
-                                  updateCategory();
-                                  setOpenMenu(null);
-                                }}
-                              >
-                                Save
-                              </button>
-                            ) : (
-                              <button
-                                className="dropdown-item"
-                                onClick={() => {
-                                  setEditCategoryId(c.id);
-                                  setEditCategoryValue(c.name);
-                                  setOpenMenu(null);
-                                }}
-                              >
-                                Edit
-                              </button>
-                            )}
-                            <button
-                              className="dropdown-item text-danger"
-                              onClick={() => {
-                                setDeleteConfirm({ type: "category", id: c.id });
-                                setOpenMenu(null);
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
+    <button
+      className="dropdown-item"
+      onClick={() => {
+        setEditCategoryId(c.id);
+        setEditCategoryValue(c.name);
+        setShowEditCategoryModal(true);
+        setOpenMenu(null);
+      }}
+    >
+      Edit
+    </button>
+
+    <button
+      className="dropdown-item text-danger"
+      onClick={() => {
+        setDeleteConfirm({ type: "category", id: c.id });
+        setOpenMenu(null);
+      }}
+    >
+      Delete
+    </button>
+  </div>
+)}
                       </td>
                     </tr>
                   ))}
@@ -270,14 +256,7 @@ const dropdownStyle: React.CSSProperties = {
                   .map((b) => (
                     <tr key={b.id}>
                       <td>
-                        {editBrandId === b.id ? (
-                          <input
-                            value={editBrandValue}
-                            onChange={(e) => setEditBrandValue(e.target.value)}
-                          />
-                        ) : (
-                          b.name
-                        )}
+                       {b.name}
                       </td>
                       <td>
                         {categories.find((c) => c.id === b.category_id)?.name || "-"}
@@ -301,41 +280,32 @@ const dropdownStyle: React.CSSProperties = {
                         </button>
 
                         {/* DROPDOWN */}
-    {openMenu?.id === b.id && openMenu.type === "brand" && (
+ {openMenu?.id === b.id && openMenu.type === "brand" && (
   <div onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
-                            {editBrandId === b.id ? (
-                              <button
-                                className="dropdown-item"
-                                onClick={() => {
-                                  updateBrand();
-                                  setOpenMenu(null);
-                                }}
-                              >
-                                Save
-                              </button>
-                            ) : (
-                              <button
-                                className="dropdown-item"
-                                onClick={() => {
-                                  setEditBrandId(b.id);
-                                  setEditBrandValue(b.name);
-                                  setOpenMenu(null);
-                                }}
-                              >
-                                Edit
-                              </button>
-                            )}
-                            <button
-                              className="dropdown-item text-danger"
-                              onClick={() => {
-                                setDeleteConfirm({ type: "brand", id: b.id });
-                                setOpenMenu(null);
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
+    <button
+      className="dropdown-item"
+      onClick={() => {
+        setEditBrandId(b.id);
+        setEditBrandValue(b.name);
+        setEditBrandCategory(b.category_id);
+        setShowEditBrandModal(true);
+        setOpenMenu(null);
+      }}
+    >
+      Edit
+    </button>
+
+    <button
+      className="dropdown-item text-danger"
+      onClick={() => {
+        setDeleteConfirm({ type: "brand", id: b.id });
+        setOpenMenu(null);
+      }}
+    >
+      Delete
+    </button>
+  </div>
+)}
                       </td>
                     </tr>
                   ))}
@@ -361,7 +331,109 @@ const dropdownStyle: React.CSSProperties = {
               </button>
             </div>
           </div>
+          {showEditBrandModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,.5)",
+      zIndex: 99999999,
+    }}
+  >
+    <div
+      className="bg-white p-4 rounded shadow"
+      style={{ width: 400 }}
+    >
+      <h5>Edit Brand</h5>
 
+      <input
+        className="form-control mb-3"
+        value={editBrandValue}
+        onChange={(e) => setEditBrandValue(e.target.value)}
+      />
+
+      <select
+        className="form-control mb-3"
+        value={editBrandCategory}
+        onChange={(e) => setEditBrandCategory(Number(e.target.value))}
+      >
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => setShowEditBrandModal(false)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="btn btn-primary"
+          onClick={async () => {
+            await api.put(`/brands/${editBrandId}`, {
+              name: editBrandValue,
+              category_id: editBrandCategory,
+            });
+
+            setShowEditBrandModal(false);
+            fetchBrands();
+          }}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{showEditCategoryModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,.5)",
+      zIndex: 99999999,
+    }}
+  >
+    <div
+      className="bg-white p-4 rounded shadow"
+      style={{ width: 400 }}
+    >
+      <h5>Edit Category</h5>
+
+      <input
+        className="form-control my-3"
+        value={editCategoryValue}
+        onChange={(e) => setEditCategoryValue(e.target.value)}
+      />
+
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => setShowEditCategoryModal(false)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="btn btn-primary"
+          onClick={async () => {
+            await updateCategory();
+            setShowEditCategoryModal(false);
+          }}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
           {/* ================= CATEGORY MODAL ================= */}
           {showCategoryModal && (
             <div
