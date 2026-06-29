@@ -11,7 +11,7 @@ import {
 
 import { useCart } from "../../../componets/common/Cartcontext";
 import { useFavorites } from "../../../componets/common/FavoritesContext";
-
+import { useToast } from "../../../componets/common/ToastContext";
 // Moved outside component so it's stable — no re-creation on every render
 const carousel = [
   { tag: "Sale", img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8" },
@@ -22,7 +22,7 @@ const carousel = [
 function Home() {
   const { addToCart } = useCart();
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
-
+const { showToast } = useToast();
   // ── Auth token from OAuth redirect ──────────────────────────────────────
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
@@ -101,10 +101,15 @@ useEffect(() => {
   // ── Helpers ──────────────────────────────────────────────────────────────
   const isFav = (id) => favorites.some((p) => p.id === id);
 
-  const toggleFav = (product) => {
-    if (isFav(product.id)) removeFromFavorites(product.id);
-    else addToFavorites(product);
-  };
+const toggleFav = (product) => {
+  if (isFav(product.id)) {
+    removeFromFavorites(product.id);
+    showToast("Removed from favorites", "warning");
+  } else {
+    addToFavorites(product);
+    showToast("Added to favorites!", "success");
+  }
+};
 
   const applyFilters = () => {
     setCategory(tempCategory);
@@ -299,7 +304,7 @@ useEffect(() => {
         {/* PRODUCT DETAIL MODAL */}
         {selectedProduct && (
           <div
-            onClick={() => setSelectedProduct(null)}
+           onClick={() => { setSelectedProduct(null); setSelectedSize(null); setSelectedColor(null); setSelectedMemory(null); }}
             style={{
               position: "fixed",
               inset: 0,
@@ -422,29 +427,23 @@ useEffect(() => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      const cat = selectedProduct?.category_name?.toLowerCase() || "";
-
-                      if (
-                        (cat.includes("cloth") || cat.includes("shoe")) &&
-                        options.sizes.length > 0 &&
-                        !selectedSize
-                      ) {
-                        alert("Please select a size first");
-                        return;
-                      }
-                      if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
-                        alert("Please select memory first");
-                        return;
-                      }
-                      if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
-                        alert("Please select a color first");
-                        return;
-                      }
-
-                      addToCart({ ...selectedProduct, selectedSize, selectedColor, selectedMemory });
-                      alert("Product added to cart!");
-                    }}
+                   onClick={() => {
+  const cat = selectedProduct?.category_name?.toLowerCase() || "";
+  if ((cat.includes("cloth") || cat.includes("shoe")) && options.sizes.length > 0 && !selectedSize) {
+    showToast("Please select a size first", "warning");
+    return;
+  }
+  if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
+    showToast("Please select memory first", "warning");
+    return;
+  }
+  if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
+    showToast("Please select a color first", "warning");
+    return;
+  }
+  addToCart({ ...selectedProduct, selectedSize, selectedColor, selectedMemory });
+  showToast("Product added to cart!", "success");
+}}
                     style={{
                       padding: 10,
                       border: "none",

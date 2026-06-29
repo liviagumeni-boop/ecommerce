@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./componets/common/Cartcontext";
 import { FavoritesProvider } from "./componets/common/FavoritesContext";
+import { ToastProvider } from "./componets/common/ToastContext";
 
 import Header from "./layout/header";
 import Footer from "./layout/footer";
@@ -52,6 +53,7 @@ function HomeLayout({ children }) {
 
 function App() {
   return (
+ <ToastProvider>
     <CartProvider>
       <FavoritesProvider>
         <BrowserRouter>
@@ -187,6 +189,7 @@ function App() {
         </BrowserRouter>
       </FavoritesProvider>
     </CartProvider>
+    </ToastProvider>
   );
 }
 
