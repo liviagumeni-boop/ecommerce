@@ -32,7 +32,8 @@ const favRef = useRef<HTMLDivElement>(null);
 
   const [openCart, setOpenCart] = useState(false);
   const [openFav, setOpenFav] = useState(false);
-
+const closeCart = () => setOpenCart(false);
+const closeFav = () => setOpenFav(false);
   useEffect(() => {
    const handleClickOutside = (e: MouseEvent) => {
   if (cartRef.current && !cartRef.current.contains(e.target as Node)) setOpenCart(false);
@@ -93,7 +94,7 @@ const favRef = useRef<HTMLDivElement>(null);
                     />
                     <FaTrash
                       style={{ cursor: "pointer" }}
-                    onClick={() => { removeFromFavorites(p.id); setOpenFav(false); }}
+                    onClick={() => { removeFromFavorites(p.id); setOpenFav(false);  }}
                     />
                   </div>
                 </div>

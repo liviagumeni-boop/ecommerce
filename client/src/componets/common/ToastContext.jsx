@@ -18,15 +18,18 @@ export function ToastProvider({ children }) {
       {children}
 
       {/* TOAST CONTAINER */}
-      <div style={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        zIndex: 99999,
-      }}>
+ <div
+  style={{
+    position: "fixed",
+    top: 20,
+    right: 20,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 10,
+    zIndex: 99999,
+  }}
+>
         {toasts.map((t) => (
           <div
             key={t.id}
