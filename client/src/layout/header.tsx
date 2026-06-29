@@ -62,46 +62,54 @@ const closeFav = () => setOpenFav(false);
       {/* RIGHT SIDE */}
       <div className="d-flex align-items-center gap-3 position-relative">
 
-        {/* ================= FAVORITES ================= */}
-        <div className="position-relative" ref={favRef}>
-          <button
-            className="btn btn-outline-light"
-            onClick={() => setOpenFav(!openFav)}
+       {/* ================= FAVORITES ================= */}
+{isLoggedIn && (
+  <div className="position-relative" ref={favRef}>
+    <button
+      className="btn btn-outline-light"
+      onClick={() => setOpenFav(!openFav)}
+    >
+      <FaHeart />
+    </button>
+
+    {openFav && (
+      <div
+        className="position-absolute bg-white shadow p-2"
+        style={{ right: 0, width: 300, zIndex: 999 }}
+      >
+        <h6>Favorites</h6>
+
+        {favorites.length === 0 && <small>Empty</small>}
+
+        {favorites.map((p: Product) => (
+          <div
+            key={p.id}
+            className="d-flex justify-content-between border-bottom py-1"
           >
-            <FaHeart />
-          </button>
+            <span>{p.name}</span>
 
-          {openFav && (
-            <div
-              className="position-absolute bg-white shadow p-2"
-              style={{ right: 0, width: 300, zIndex: 999 }}
-            >
-              <h6>Favorites</h6>
-
-              {favorites.length === 0 && <small>Empty</small>}
-
-              {favorites.map((p: Product) => (
-                <div
-                  key={p.id}
-                  className="d-flex justify-content-between border-bottom py-1"
-                >
-                  <span>{p.name}</span>
-
-                  <div className="d-flex gap-2">
-                    <FaShoppingCart
-                      style={{ cursor: "pointer" }}
-                      onClick={() => { addToCart(p); setOpenFav(false); }}
-                    />
-                    <FaTrash
-                      style={{ cursor: "pointer" }}
-                    onClick={() => { removeFromFavorites(p.id); setOpenFav(false);  }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="d-flex gap-2">
+              <FaShoppingCart
+                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  addToCart(p);
+                  setOpenFav(false);
+                }}
+              />
+              <FaTrash
+                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  removeFromFavorites(p.id);
+                  setOpenFav(false);
+                }}
+              />
             </div>
-          )}
-        </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
         {/* ================= CART ================= */}
         <div className="position-relative" ref={cartRef}>
