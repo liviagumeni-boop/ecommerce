@@ -1,10 +1,13 @@
 import { useState } from "react";
 import axios from "../../../api/axios";
 import { loginUser } from "../../../api/login";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../../componets/common/ToastContext";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+const navigate = useNavigate();
+const { showToast } = useToast();
   const handleLogin = async (e) => {
   e.preventDefault();
 
@@ -21,7 +24,7 @@ localStorage.setItem("role", user.role);
     }
   } catch (err) {
     console.log(err.response?.data);
-    alert(err.response?.data?.message || "Email ose password gabim");
+     showToast(err.response?.data?.message || "Email ose password gabim", "error");
   }
 };
 
@@ -115,6 +118,12 @@ const loginWithGoogle = () => {
           >
             Login with Google
           </button>
+            <p style={{ textAlign: "center", marginTop: "15px" }}>
+          Do not have a account ?{" "}
+          <span onClick={() => navigate("/signup")} style={{ color: "blue", cursor: "pointer" }}>
+            Sign up 
+          </span>
+        </p>
         </form>
       </div>
     </div>
