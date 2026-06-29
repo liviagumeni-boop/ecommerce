@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaShoppingCart,
@@ -22,24 +22,25 @@ type Product = {
 
 function Header() {
   const navigate = useNavigate();
+  const cartRef = useRef<HTMLDivElement>(null);
+const favRef = useRef<HTMLDivElement>(null);
 
   const isLoggedIn = localStorage.getItem("token");
 
-  const {
-    cart,
-    removeFromCart,
-    increaseQty,
-    decreaseQty,
-    addToCart,
-  } = useCart();
-
-  const {
-    favorites,
-    removeFromFavorites,
-  } = useFavorites();
+  const { cart, removeFromCart, increaseQty, decreaseQty, addToCart } = useCart();
+  const { favorites, removeFromFavorites } = useFavorites();
 
   const [openCart, setOpenCart] = useState(false);
   const [openFav, setOpenFav] = useState(false);
+
+  useEffect(() => {
+   const handleClickOutside = (e: MouseEvent) => {
+  if (cartRef.current && !cartRef.current.contains(e.target as Node)) setOpenCart(false);
+  if (favRef.current && !favRef.current.contains(e.target as Node)) setOpenFav(false);
+};
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const cartCount = cart.reduce(
     (sum: number, item: Product) => sum + (item.qty || 1),
@@ -50,24 +51,18 @@ function Header() {
     <header className="navbar navbar-dark bg-dark px-3 d-flex align-items-center position-relative">
 
       {/* HOME */}
-      <button
-        className="btn btn-outline-light"
-        onClick={() => navigate("/")}
-      >
+      <button className="btn btn-outline-light" onClick={() => navigate("/")}>
         <FaHome />
       </button>
 
       {/* TITLE */}
-      <div className="text-white fw-bold mx-auto">
-        Ecommerce Store
-      </div>
+      <div className="text-white fw-bold mx-auto">Ecommerce Store</div>
 
       {/* RIGHT SIDE */}
       <div className="d-flex align-items-center gap-3 position-relative">
 
         {/* ================= FAVORITES ================= */}
-        <div className="position-relative">
-
+        <div className="position-relative" ref={favRef}>
           <button
             className="btn btn-outline-light"
             onClick={() => setOpenFav(!openFav)}
@@ -92,36 +87,29 @@ function Header() {
                   <span>{p.name}</span>
 
                   <div className="d-flex gap-2">
-
                     <FaShoppingCart
                       style={{ cursor: "pointer" }}
-                      onClick={() => addToCart(p)}
+                      onClick={() => { addToCart(p); setOpenFav(false); }}
                     />
-
                     <FaTrash
                       style={{ cursor: "pointer" }}
-                      onClick={() => removeFromFavorites(p.id)}
+                    onClick={() => { removeFromFavorites(p.id); setOpenFav(false); }}
                     />
-
                   </div>
                 </div>
               ))}
-
             </div>
           )}
-
         </div>
 
         {/* ================= CART ================= */}
-        <div className="position-relative">
-
+        <div className="position-relative" ref={cartRef}>
           <button
             className="btn btn-outline-light position-relative"
             onClick={() => setOpenCart(!openCart)}
           >
             <FaShoppingCart />
 
-            {/* 🔥 BADGE */}
             {cartCount > 0 && (
               <span
                 style={{
@@ -155,52 +143,43 @@ function Header() {
 
               {cart.map((p: Product) => (
                 <div key={p.id} className="border-bottom py-2">
-
                   <div className="d-flex justify-content-between">
                     <span>{p.name}</span>
-
                     <FaTrash
                       style={{ cursor: "pointer" }}
-                      onClick={() => removeFromCart(p.id)}
+                       onClick={() => { removeFromCart(p.id); setOpenCart(false); }}
                     />
                   </div>
 
                   <div className="d-flex align-items-center gap-2 mt-1">
-
                     <FaMinus
                       style={{ cursor: "pointer" }}
                       onClick={() => decreaseQty(p.id)}
                     />
-
                     <span>{p.qty}</span>
-
                     <FaPlus
                       style={{ cursor: "pointer" }}
                       onClick={() => increaseQty(p.id)}
                     />
-
                   </div>
-
                 </div>
               ))}
 
               <button
                 className="btn btn-dark w-100 mt-2"
-                onClick={() => navigate("/cart")}
+                onClick={() => { navigate("/cart"); setOpenCart(false); }}
               >
                 Open Cart
               </button>
 
               <button
                 className="btn btn-primary w-100 mt-1"
-                onClick={() => navigate("/checkout")}
+                onClick={() => { navigate("/checkout"); setOpenCart(false); }}
               >
                 Checkout
               </button>
-
             </div>
           )}
-
         </div>
 
         {/* ================= USER AUTH ================= */}

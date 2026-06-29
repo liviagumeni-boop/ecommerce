@@ -413,7 +413,14 @@ const toggleFav = (product) => {
 
                 <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
                   <button
-                    onClick={() => toggleFav(selectedProduct)}
+                    onClick={() => {
+  toggleFav(selectedProduct);
+
+  setSelectedProduct(null);
+  setSelectedSize(null);
+  setSelectedColor(null);
+  setSelectedMemory(null);
+}}
                     style={{
                       padding: 10,
                       border: "none",
@@ -427,22 +434,38 @@ const toggleFav = (product) => {
                   </button>
 
                   <button
-                   onClick={() => {
+                 onClick={() => {
   const cat = selectedProduct?.category_name?.toLowerCase() || "";
+
   if ((cat.includes("cloth") || cat.includes("shoe")) && options.sizes.length > 0 && !selectedSize) {
     showToast("Please select a size first", "warning");
     return;
   }
+
   if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
     showToast("Please select memory first", "warning");
     return;
   }
+
   if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
     showToast("Please select a color first", "warning");
     return;
   }
-  addToCart({ ...selectedProduct, selectedSize, selectedColor, selectedMemory });
+
+  addToCart({
+    ...selectedProduct,
+    selectedSize,
+    selectedColor,
+    selectedMemory,
+  });
+
   showToast("Product added to cart!", "success");
+
+  // Close modal
+  setSelectedProduct(null);
+  setSelectedSize(null);
+  setSelectedColor(null);
+  setSelectedMemory(null);
 }}
                     style={{
                       padding: 10,
