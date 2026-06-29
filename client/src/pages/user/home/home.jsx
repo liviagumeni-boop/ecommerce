@@ -1,15 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api, { BACKEND_URL } from "../../../api/axios";
 import {
   FaHeart,
+  FaShoppingCart,
+  FaChevronLeft,
+  FaChevronRight,
   FaFilter,
   FaTimes,
 } from "react-icons/fa";
 
 import { useCart } from "../../../componets/common/Cartcontext";
 import { useFavorites } from "../../../componets/common/FavoritesContext";
-import { useToast } from "../../../componets/common/ToastContext";
 
+// Moved outside component so it's stable — no re-creation on every render
 const carousel = [
   { tag: "Sale", img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8" },
   { tag: "New", img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30" },
@@ -19,38 +22,38 @@ const carousel = [
 function Home() {
   const { addToCart } = useCart();
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
-  const { showToast } = useToast();
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const role = params.get("role");
-    const user = params.get("user");
+  // ── Auth token from OAuth redirect ──────────────────────────────────────
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const role = params.get("role");
+  const user = params.get("user");
 
-    if (token && role) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
-      if (user) {
-        localStorage.setItem("user", decodeURIComponent(user));
-      }
-      window.history.replaceState({}, "", "/");
-      if (role === "admin") {
-        window.location.href = "/admin";
-      }
+  if (token && role) {
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", role);
+    if (user) {
+      localStorage.setItem("user", decodeURIComponent(user));
     }
-  }, []);
-
+    window.history.replaceState({}, "", "/");
+    if (role === "admin") {
+      window.location.href = "/admin";
+    }
+  }
+}, []);
   const [category, setCategory] = useState("All");
   const [brand, setBrand] = useState("All");
   const [search, setSearch] = useState("");
   const [slide, setSlide] = useState(0);
 
+  // ── Single carousel timer (was duplicated before) ────────────────────────
   useEffect(() => {
     const timer = setInterval(() => {
       setSlide((prev) => (prev + 1) % carousel.length);
     }, 3000);
     return () => clearInterval(timer);
-  }, []);
+  }, []); // carousel is now stable (defined outside), so [] is safe
 
   const [openFilter, setOpenFilter] = useState(false);
   const [tempCategory, setTempCategory] = useState("All");
@@ -67,6 +70,7 @@ function Home() {
   const [brands, setBrands] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  // ── Data fetching (was defined but never called before) ──────────────────
   const fetchProducts = async () => {
     const res = await api.get("/products");
     setProducts(res.data);
@@ -82,20 +86,24 @@ function Home() {
     setBrands(res.data);
   };
 
-  useEffect(() => { fetchProducts(); }, []);
-  useEffect(() => { fetchCategories(); }, []);
-  useEffect(() => { fetchBrands(); }, []);
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchBrands();
+  }, []);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
   const isFav = (id) => favorites.some((p) => p.id === id);
 
   const toggleFav = (product) => {
-    if (isFav(product.id)) {
-      removeFromFavorites(product.id);
-      showToast("Removed from favorites", "warning");
-    } else {
-      addToFavorites(product);
-      showToast("Added to favorites!", "success");
-    }
+    if (isFav(product.id)) removeFromFavorites(product.id);
+    else addToFavorites(product);
   };
 
   const applyFilters = () => {
@@ -114,9 +122,16 @@ function Home() {
 
   const getOptionsByCategory = (product) => {
     const cat = product?.category_name?.toLowerCase() || "";
-    if (cat.includes("cloth")) return { sizes: ["XS", "S", "M", "L", "XL", "XXL"], colors: [], memory: [] };
-    if (cat.includes("shoe")) return { sizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"], colors: [], memory: [] };
-    if (cat.includes("electronic")) return { sizes: [], colors: ["Black", "Silver", "Blue"], memory: ["64GB", "128GB", "256GB", "512GB", "1TB"] };
+
+    if (cat.includes("cloth")) {
+      return { sizes: ["XS", "S", "M", "L", "XL", "XXL"], colors: [], memory: [] };
+    }
+    if (cat.includes("shoe")) {
+      return { sizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"], colors: [], memory: [] };
+    }
+    if (cat.includes("electronic")) {
+      return { sizes: [], colors: ["Black", "Silver", "Blue"], memory: ["64GB", "128GB", "256GB", "512GB", "1TB"] };
+    }
     return { sizes: [], colors: [], memory: [] };
   };
 
@@ -130,30 +145,7 @@ function Home() {
     ? getOptionsByCategory(selectedProduct)
     : { sizes: [], colors: [], memory: [] };
 
-  const handleAddToCart = () => {
-    const cat = selectedProduct?.category_name?.toLowerCase() || "";
-
-    if (
-      (cat.includes("cloth") || cat.includes("shoe")) &&
-      options.sizes.length > 0 &&
-      !selectedSize
-    ) {
-      showToast("Please select a size first", "warning");
-      return;
-    }
-    if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
-      showToast("Please select memory first", "warning");
-      return;
-    }
-    if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
-      showToast("Please select a color first", "warning");
-      return;
-    }
-
-    addToCart({ ...selectedProduct, selectedSize, selectedColor, selectedMemory });
-    showToast("Product added to cart!", "success");
-  };
-
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div>
       {/* CAROUSEL */}
@@ -241,8 +233,12 @@ function Home() {
           style={{ width: "100%", marginTop: 10 }}
         />
 
-        <button className="btn btn-success w-100 mt-2" onClick={applyFilters}>SAVE</button>
-        <button className="btn btn-danger w-100 mt-2" onClick={clearFilters}>CLEAR</button>
+        <button className="btn btn-success w-100 mt-2" onClick={applyFilters}>
+          SAVE
+        </button>
+        <button className="btn btn-danger w-100 mt-2" onClick={clearFilters}>
+          CLEAR
+        </button>
       </div>
 
       <div style={{ display: "flex" }}>
@@ -265,7 +261,7 @@ function Home() {
                   <img
                     src={p.image ? `${BACKEND_URL}${p.image}` : "https://placehold.co/400x300?text=No+Image"}
                     style={{ width: "100%", height: 180, objectFit: "cover", cursor: "pointer" }}
-                    onClick={() => { setSelectedProduct(p); setSelectedSize(null); setSelectedColor(null); setSelectedMemory(null); }}
+                    onClick={() => { setSelectedProduct(p); setSelectedSize(null); }}
                     onError={(e) => { e.target.src = "https://placehold.co/400x300?text=No+Image"; }}
                   />
 
@@ -426,7 +422,29 @@ function Home() {
                   </button>
 
                   <button
-                    onClick={handleAddToCart}
+                    onClick={() => {
+                      const cat = selectedProduct?.category_name?.toLowerCase() || "";
+
+                      if (
+                        (cat.includes("cloth") || cat.includes("shoe")) &&
+                        options.sizes.length > 0 &&
+                        !selectedSize
+                      ) {
+                        alert("Please select a size first");
+                        return;
+                      }
+                      if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
+                        alert("Please select memory first");
+                        return;
+                      }
+                      if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
+                        alert("Please select a color first");
+                        return;
+                      }
+
+                      addToCart({ ...selectedProduct, selectedSize, selectedColor, selectedMemory });
+                      alert("Product added to cart!");
+                    }}
                     style={{
                       padding: 10,
                       border: "none",
