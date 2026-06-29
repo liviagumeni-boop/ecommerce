@@ -71,7 +71,7 @@ router.post("/create-checkout-session", async (req, res) => {
         },
         quantity: item.qty,
       })),
-      return_url: "http://localhost:5173/payment-success?session_id={CHECKOUT_SESSION_ID}",
+      return_url: `${process.env.STRIPE_RETURN_URL}?session_id={CHECKOUT_SESSION_ID}`,
     });
 
     return res.json({ clientSecret: session.client_secret });

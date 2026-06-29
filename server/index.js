@@ -6,10 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
-const allowedOrigins = [
-  "https://ecommerce-qhno.vercel.app",
-  "http://localhost:5173",
-];
+const allowedOrigins = process.env.FRONTEND_URL.split(",");
 
 const corsOptions = {
   origin: (origin, callback) => {
