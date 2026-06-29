@@ -4,7 +4,7 @@
 //timers (setTimeout, setInterval)
 //subscribe / unsubscribe
 //logjikë që ndodh pas shfaqjes së UI
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState , useRef } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 
@@ -71,8 +71,36 @@ const Products: React.FC = () => {
     in_stock: true,
   });
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState<any>({});
+  const [editModal, setEditModal] = useState(false);
+const menuRef = useRef<HTMLDivElement | null>(null);
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (!menuRef.current) return;
+
+    if (!menuRef.current.contains(event.target as Node)) {
+      setOpenMenuId(null);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+const [editProduct, setEditProduct] = useState({
+  id: 0,
+  name: "",
+  description: "",
+  brand_id: 0,
+  category_id: 0,
+  image: null as File | null,
+  stock: 0,
+  qty: 0,
+  purchase_price: 0,
+  sale_price: 0,
+  in_stock: true,
+});
   const [saleModal, setSaleModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [saleQty, setSaleQty] = useState(1);
@@ -204,7 +232,28 @@ const Products: React.FC = () => {
     fetchProducts();
     setShowModal(false);
   };
+const updateProduct = async () => {
+  const formData = new FormData();
 
+  formData.append("name", editProduct.name);
+  formData.append("description", editProduct.description);
+  formData.append("brand_id", String(editProduct.brand_id));
+  formData.append("category_id", String(editProduct.category_id));
+  formData.append("purchase_price", String(editProduct.purchase_price));
+  formData.append("sale_price", String(editProduct.sale_price));
+  formData.append("in_stock", String(editProduct.in_stock));
+  formData.append("qty", String(editProduct.qty));
+
+  if (editProduct.image) {
+    formData.append("image", editProduct.image);
+  }
+
+  await api.put(`/products/${editProduct.id}`, formData);
+
+  showToast("Product updated");
+  setEditModal(false);
+  fetchProducts();
+};
   // ================= DELETE =================
   const deleteProduct = async (id: number) => {
     try {
@@ -217,26 +266,24 @@ const Products: React.FC = () => {
   };
 
   // ================= EDIT =================
-  const startEdit = (p: any) => {
-    setEditId(p.id);
-    setEditValue({
-      name: p.name,
-      description: p.description,
-      brand_id: p.brand_id,
-      category_id: p.category_id,
-      image: p.image,
-      qty: p.qty,
-      purchase_price: p.purchase_price,
-      sale_price: p.sale_price,
-      in_stock: p.in_stock,
-    });
-  };
+ const startEdit = (p: Product) => {
+  setEditProduct({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    brand_id: p.brand_id,
+    category_id: p.category_id,
+    image: null,
+    stock: p.stock,
+    qty: p.qty,
+    purchase_price: p.purchase_price,
+    sale_price: p.sale_price,
+    in_stock: p.in_stock,
+  });
 
-  const saveEdit = async () => {
-    await api.put(`/products/${editId}`, editValue);
-    setEditId(null);
-    fetchProducts();
-  };
+  setEditModal(true);
+};
+
 const { showToast } = useToast();
   return (
     <div className="d-flex">
@@ -369,180 +416,198 @@ const { showToast } = useToast();
                   {products
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((p) => (
-                      <tr key={p.id}>
+                    <tr key={p.id}>
+  {/* NAME */}
+  <td>{p.name}</td>
 
-                        {/* NAME */}
-                        <td>
-                          {editId === p.id ? (
-                            <input
-                              className="form-control"
-                              value={editValue.name}
-                              onChange={(e) =>
-                                setEditValue({ ...editValue, name: e.target.value })
-                              }
-                            />
-                          ) : (
-                            p.name
-                          )}
-                        </td>
+  {/* BRAND */}
+  <td>{p.brand_name}</td>
 
-                        {/* BRAND */}
-                        <td>{p.brand_name}</td>
+  {/* CATEGORY */}
+  <td>{p.category_name}</td>
 
-                        {/* CATEGORY */}
-                        <td>
-                          {editId === p.id ? (
-                            <select
-                              className="form-control"
-                              value={editValue.category_id}
-                              onChange={(e) =>
-                                setEditValue({
-                                  ...editValue,
-                                  category_id: Number(e.target.value),
-                                })
-                              }
-                            >
-                              {categories.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            p.category_name
-                          )}
-                        </td>
+  {/* QTY */}
+  <td>{p.qty}</td>
 
-                        {/* QTY */}
-                        <td>
-                          {editId === p.id ? (
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={editValue.qty ?? 0}
-                              onChange={(e) =>
-                                setEditValue({
-                                  ...editValue,
-                                  qty: Number(e.target.value),
-                                })
-                              }
-                            />
-                          ) : (
-                            p.qty !== undefined && p.qty !== null ? p.qty : "-"
-                          )}
-                        </td>
+  {/* PURCHASE */}
+  <td>{p.purchase_price} €</td>
 
-                        {/* PURCHASE PRICE */}
-                        <td>
-                          {editId === p.id ? (
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={editValue.purchase_price}
-                              onChange={(e) =>
-                                setEditValue({
-                                  ...editValue,
-                                  purchase_price: Number(e.target.value),
-                                })
-                              }
-                            />
-                          ) : (
-                            `${p.purchase_price} €`
-                          )}
-                        </td>
+  {/* SALE */}
+  <td>{p.sale_price} €</td>
 
-                        {/* SALE PRICE */}
-                        <td>
-                          {editId === p.id ? (
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={editValue.sale_price}
-                              onChange={(e) =>
-                                setEditValue({
-                                  ...editValue,
-                                  sale_price: Number(e.target.value),
-                                })
-                              }
-                            />
-                          ) : (
-                            `${p.sale_price} €`
-                          )}
-                        </td>
+  {/* STATUS */}
+  <td>
+    {p.in_stock ? (
+      <span className="badge bg-success">In</span>
+    ) : (
+      <span className="badge bg-danger">Out</span>
+    )}
+  </td>
 
-                        {/* STATUS */}
-                        <td>
-                          {p.in_stock ? (
-                            <span className="badge bg-success">In</span>
-                          ) : (
-                            <span className="badge bg-danger">Out</span>
-                          )}
-                        </td>
+  {/* ACTIONS */}
+  <td style={{ position: "relative" }}>
+    <button
+      className="btn btn-light btn-sm"
+      onClick={() =>
+        setOpenMenuId(openMenuId === p.id ? null : p.id)
+      }
+    >
+      ⋮
+    </button>
 
-                        {/* ACTIONS */}
-                        <td style={{ position: "relative" }}>
-                          {/* 3 DOT BUTTON */}
-                          <button
-                            className="btn btn-light btn-sm"
-                            onClick={() =>
-                              setOpenMenuId(openMenuId === p.id ? null : p.id)
-                            }
-                          >
-                            ⋮
-                          </button>
+    {openMenuId === p.id && (
+      <div
+          ref={menuRef}
+        style={{
+          position: "absolute",
+          right: 0,
+          top: "100%",
+          background: "#fff",
+          border: "1px solid #ddd",
+          borderRadius: 6,
+          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+          zIndex: 999,
+          minWidth: 140,
+          padding: "5px",
+        }}
+      >
+        <button
+          className="dropdown-item"
+          onClick={() => {
+            startEdit(p);
+            setOpenMenuId(null);
+          }}
+        >
+          Edit
+        </button>
 
-                          {/* DROPDOWN MENU */}
-                          {openMenuId === p.id && (
-                            <div
-                              style={{
-                                position: "absolute",
-                                right: 0,
-                                top: "100%",
-                                background: "#fff",
-                                border: "1px solid #ddd",
-                                borderRadius: 6,
-                                boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                                zIndex: 999,
-                                minWidth: 140,
-                                padding: "5px",
-                              }}
-                            >
-                              {editId === p.id ? (
-                                <SaveButton
-                                  onClick={() => {
-                                    saveEdit();
-                                    setOpenMenuId(null);
-                                  }}
-                                />
-                              ) : (
-                                <button
-                                  className="dropdown-item"
-                                  onClick={() => {
-                                    startEdit(p);
-                                    setOpenMenuId(null);
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                              )}
-
-                              <button
-                                className="dropdown-item text-danger"
-                                onClick={() => setDeleteModal(p.id)}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
+        <button
+          className="dropdown-item text-danger"
+          onClick={() => setDeleteModal(p.id)}
+        >
+          Delete
+        </button>
+      </div>
+    )}
+  </td>
+</tr>
                     ))}
                 </tbody>
 
               </table>
             </div>
           </div>
+{editModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 99999,
+    }}
+  >
+    <div
+      className="bg-white p-4 rounded"
+      style={{ width: 550, maxHeight: "90vh", overflowY: "auto",   position: "relative",
+      zIndex: 100000, }}
+    >
+      <h5>Edit Product</h5>
 
+      <input
+        className="form-control my-2"
+        value={editProduct.name}
+        onChange={(e) =>
+          setEditProduct({ ...editProduct, name: e.target.value })
+        }
+      />
+<select
+  className="form-control my-2"
+  value={editProduct.brand_id}
+  onChange={(e) =>
+    setEditProduct({
+      ...editProduct,
+      brand_id: Number(e.target.value),
+    })
+  }
+>
+  <option value="">Select Brand</option>
+  {brands.map((b) => (
+    <option key={b.id} value={b.id}>
+      {b.name}
+    </option>
+  ))}
+</select>
+
+{/* CATEGORY */}
+<select
+  className="form-control my-2"
+  value={editProduct.category_id}
+  onChange={(e) =>
+    setEditProduct({
+      ...editProduct,
+      category_id: Number(e.target.value),
+    })
+  }
+>
+  <option value="">Select Category</option>
+  {categories.map((c) => (
+    <option key={c.id} value={c.id}>
+      {c.name}
+    </option>
+  ))}
+</select>
+<input
+  type="number"
+  className="form-control my-2"
+  value={editProduct.qty}
+  onChange={(e) =>
+    setEditProduct({
+      ...editProduct,
+      qty: Number(e.target.value),
+    })
+  }
+  placeholder="Qty"
+/>
+      <input
+        type="number"
+        className="form-control my-2"
+        value={editProduct.purchase_price}
+        onChange={(e) =>
+          setEditProduct({
+            ...editProduct,
+            purchase_price: Number(e.target.value),
+          })
+        }
+      />
+
+      <input
+        type="number"
+        className="form-control my-2"
+        value={editProduct.sale_price}
+        onChange={(e) =>
+          setEditProduct({
+            ...editProduct,
+            sale_price: Number(e.target.value),
+          })
+        }
+      />
+
+      <div className="d-flex justify-content-end gap-2 mt-3">
+        <button
+          className="btn btn-secondary"
+          onClick={() => setEditModal(false)}
+        >
+          Cancel
+        </button>
+
+        <button className="btn btn-primary" onClick={updateProduct}>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
           {/* ================= MODAL ================= */}
           {showModal && (
             <div
@@ -551,9 +616,12 @@ const { showToast } = useToast();
                 position: "fixed",
                 inset: 0,
                 background: "rgba(0,0,0,0.5)",
+                zIndex: 99999,
+
               }}
             >
-              <div className="bg-white p-4 rounded" style={{ width: 550, maxHeight: "90vh", overflowY: "auto" }}>
+              <div className="bg-white p-4 rounded" style={{ width: 550, maxHeight: "90vh", overflowY: "auto" ,   position: "relative",
+          zIndex: 100000,}}>
 
                 <h5>Add Product</h5>
 
