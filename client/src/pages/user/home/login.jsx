@@ -3,6 +3,7 @@ import axios from "../../../api/axios";
 import { loginUser } from "../../../api/login";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../componets/common/ToastContext";
+import { FcGoogle } from "react-icons/fc";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -105,19 +106,25 @@ const loginWithGoogle = () => {
             Login
           </button>
 
-          <button
-            type="button"
-            onClick={loginWithGoogle}
-            style={{
-              padding: "12px",
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              background: "white",
-              cursor: "pointer",
-            }}
-          >
-            Login with Google
-          </button>
+     <button
+  type="button"
+  onClick={loginWithGoogle}
+  style={{
+    padding: "12px",
+    border: "1px solid #ddd",
+    borderRadius: "10px",
+    background: "white",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    fontWeight: "500",
+  }}
+>
+  <FcGoogle size={20} />
+  Login with Google
+</button>
             <p style={{ textAlign: "center", marginTop: "15px" }}>
           Do not have a account ?{" "}
           <span onClick={() => navigate("/signup")} style={{ color: "blue", cursor: "pointer" }}>

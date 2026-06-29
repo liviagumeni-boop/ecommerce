@@ -5,7 +5,7 @@ import api from "../../../api/axios";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import { SaveButton } from "../../../componets/ui/button";
-
+import { useToast } from "../../../componets/common/ToastContext";
 import {
   FaStore,
   FaMoon,
@@ -30,7 +30,7 @@ const Settings: React.FC = () => {
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
   const [orderUpdates, setOrderUpdates] = useState(true);
-
+const { showToast } = useToast();
   // security
   const [twoFA, setTwoFA] = useState(false);
   const [loginAlerts, setLoginAlerts] = useState(true);
@@ -55,7 +55,7 @@ const Settings: React.FC = () => {
     try {
       await api.put("/store-settings", { store_name: storeName, email });
 
-      alert("Store settings saved");
+    showToast("Store settings saved", "success");
     } catch (err) {
       console.error(err);
     }

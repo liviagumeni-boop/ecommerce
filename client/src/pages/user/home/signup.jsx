@@ -2,8 +2,9 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../api/axios";
 import SignupForm from "../../../componets/forms/SingupForm";
-
+import { useToast } from "../../../componets/common/ToastContext";
 function Signup() {
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSignup = async (data) => {
@@ -12,12 +13,12 @@ function Signup() {
 
       console.log("Signup success:", res.data);
 
-      alert("Account created!");
+    showToast("Account created!", "success");
 
       navigate("/login");
     } catch (err) {
       console.log(err.response?.data);
-      alert(err.response?.data?.message || "Signup failed");
+     showToast(err.response?.data?.message || "Signup failed", "error");
     }
   };
 

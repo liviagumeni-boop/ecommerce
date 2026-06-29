@@ -15,7 +15,7 @@ import {
 } from "../../../componets/ui/button";
 
 import api from "../../../api/axios";
-
+import { useToast } from "../../../componets/common/ToastContext";
 type Product = {
   id: number;
   name: string;
@@ -212,7 +212,7 @@ const Products: React.FC = () => {
       setProducts((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       console.log(err);
-      alert("Delete failed");
+   showToast("Delete faild");
     }
   };
 
@@ -237,7 +237,7 @@ const Products: React.FC = () => {
     setEditId(null);
     fetchProducts();
   };
-
+const { showToast } = useToast();
   return (
     <div className="d-flex">
       <Sidebar />

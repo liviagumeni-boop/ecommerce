@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import api, { BACKEND_URL } from "../../../api/axios";
 import { useFavorites } from "../../../componets/common/FavoritesContext";
 import { useCart } from "../../../componets/common/Cartcontext";
+import { useToast } from "../../../componets/common/ToastContext";
 function Profile() {
   const { favorites, removeFromFavorites } = useFavorites();
 const { addToCart } = useCart();
   const navigate = useNavigate();
-
+const { showToast } = useToast();
   const userId = JSON.parse(localStorage.getItem("user"))?.id;
 
   const [view, setView] = useState("profile");
@@ -82,7 +83,7 @@ const { addToCart } = useCart();
     setUser(res.data);
     setTemp(res.data);
     setEdit(false);
-    alert("Profile updated");
+showToast("Profile updated", "success");
   };
 
   /* ================= SAVE ADDRESS ================= */
@@ -95,32 +96,29 @@ const { addToCart } = useCart();
 
     setUser(res.data);
     setTemp(res.data);
-    alert("Address updated");
+   showToast("Address updated", "success");
   };
 
   /* ================= PASSWORD ================= */
-  const savePassword = async () => {
-    if (!passwords.old || !passwords.new)
-      return alert("Fill all fields");
+ const savePassword = async () => {
+  if (!passwords.old || !passwords.new) {
+    showToast("Fill all fields", "warning");
+    return;
+  }
+  if (passwords.new !== passwords.confirm) {
+    showToast("Passwords don't match", "error");
+    return;
+  }
 
-    if (passwords.new !== passwords.confirm)
-      return alert("Passwords don't match");
+  await api.put(
+    "/users/me/password",
+    { old: passwords.old, new: passwords.new },
+    { headers: { userid: userId } }
+  );
 
-    await api.put(
-      "/users/me/password",
-      {
-        old: passwords.old,
-        new: passwords.new,
-      },
-      {
-        headers: { userid: userId },
-      }
-    );
-
-    alert("Password updated");
-
-    setPasswords({ old: "", new: "", confirm: "" });
-  };
+  showToast("Password updated", "success");
+  setPasswords({ old: "", new: "", confirm: "" });
+};
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", padding: 20 }}>

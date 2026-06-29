@@ -1,9 +1,11 @@
 import { useState } from "react";
 import api from "../api/axios";
+import { useToast } from "../../../componets/common/ToastContext";
+
 
 export default function Checkout() {
   const [amount, setAmount] = useState(10);
-
+const { showToast } = useToast();
   const pay = async () => {
     const res = await api.post(
       "/payment/create-payment-intent",
@@ -12,7 +14,7 @@ export default function Checkout() {
 
     const clientSecret = res.data.clientSecret;
 
-    alert("Client Secret u krijua: " + clientSecret);
+  showToast("Client Secret u krijua!", "success");
   };
 
   return (
