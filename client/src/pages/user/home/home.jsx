@@ -24,20 +24,24 @@ function Home() {
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
 
   // ── Auth token from OAuth redirect ──────────────────────────────────────
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const role = params.get("role");
-    if (token && role) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
-      window.history.replaceState({}, "", "/");
-      if (role === "admin") {
-        window.location.href = "/admin";
-      }
-    }
-  }, []);
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const role = params.get("role");
+  const user = params.get("user");
 
+  if (token && role) {
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", role);
+    if (user) {
+      localStorage.setItem("user", decodeURIComponent(user));
+    }
+    window.history.replaceState({}, "", "/");
+    if (role === "admin") {
+      window.location.href = "/admin";
+    }
+  }
+}, []);
   const [category, setCategory] = useState("All");
   const [brand, setBrand] = useState("All");
   const [search, setSearch] = useState("");
