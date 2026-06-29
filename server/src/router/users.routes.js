@@ -172,4 +172,17 @@ router.get("/admin", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query("DELETE FROM orders WHERE user_id = $1", [id]);
+    await pool.query("DELETE FROM users WHERE id = $1", [id]);
+
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
 module.exports = router;

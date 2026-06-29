@@ -16,7 +16,7 @@ type User = {
 const Users: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [page, setPage] = useState(1);
-
+const [deleteUser, setDeleteUser] = useState<User | null>(null);
   const perPage = 9;
 
   useEffect(() => {
@@ -70,14 +70,13 @@ const Users: React.FC = () => {
             {currentUsers.map((u) => (
               <div className="col-12 col-md-6 col-lg-4" key={u.id}>
                 <div className="card shadow-sm border-0 h-100 position-relative">
-
-                  <button
-                    onClick={() => handleDelete(u.id)}
-                    className="btn btn-light position-absolute"
-                    style={{ top: 10, right: 10 }}
-                  >
-                    <FaTrash color="red" />
-                  </button>
+<button
+  onClick={() => setDeleteUser(u)}
+  className="btn btn-light position-absolute"
+  style={{ top: 10, right: 10 }}
+>
+  <FaTrash color="red" />
+</button>
 
                   <div className="card-body">
                     <h5>{u.name}</h5>
@@ -105,7 +104,51 @@ const Users: React.FC = () => {
               </div>
             ))}
           </div>
+{deleteUser && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+    onClick={() => setDeleteUser(null)}
+  >
+    <div
+      className="bg-white p-4 rounded"
+      style={{ width: 350 }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h5>Delete User</h5>
 
+      <p>
+        Are you sure you want to delete <b>{deleteUser.name}</b>?
+      </p>
+
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => setDeleteUser(null)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="btn btn-danger"
+          onClick={async () => {
+            await handleDelete(deleteUser.id);
+            setDeleteUser(null);
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
           {/* PAGINATION */}
           <div className="d-flex justify-content-center gap-3 mt-4">
 
