@@ -34,7 +34,7 @@ function Sidebar() {
           }`}
         >
           <FaBoxOpen />
-          <span>Products</span>
+          <span>Inventories</span>
         </Link>
 
         <Link
