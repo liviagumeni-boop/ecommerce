@@ -109,20 +109,22 @@ router.post("/", upload.single("image"), async (req, res) => {
 });
 
 // UPDATE
-router.put("/:id", async (req, res) => {
+router.put("/:id", upload.single("image"), async (req, res) => {
   try {
     const {
       name,
       description,
-      image,
       brand_id,
       category_id,
-      qty,
-      stock,
       purchase_price,
       sale_price,
       in_stock,
+      image: currentImage,
     } = req.body;
+
+    const image = req.file
+      ? "/uploads/" + req.file.filename
+      : currentImage;
 
     const result = await pool.query(
       `
@@ -133,12 +135,10 @@ router.put("/:id", async (req, res) => {
         image=$3,
         brand_id=$4,
         category_id=$5,
-        qty=$6,
-        stock=$7,
-        purchase_price=$8,
-        sale_price=$9,
-        in_stock=$10
-      WHERE id=$11
+        purchase_price=$6,
+        sale_price=$7,
+        in_stock=$8
+      WHERE id=$9
       RETURNING *
       `,
       [
@@ -147,8 +147,6 @@ router.put("/:id", async (req, res) => {
         image,
         brand_id,
         category_id,
-        qty,
-        stock,
         purchase_price,
         sale_price,
         in_stock,

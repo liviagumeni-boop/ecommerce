@@ -3,7 +3,7 @@
 //timers (setTimeout, setInterval)
 //subscribe / unsubscribe
 //logjikë që ndodh pas shfaqjes së UI
-import React, { useEffect, useState , useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 
@@ -39,11 +39,32 @@ type Category = {
   name: string;
 };
 
+/* ================= DYNAMIC VARIANT TYPES ================= */
+// An "attribute" is something like { name: "Color", values: ["Red","Blue"] }
+// or { name: "Storage", values: ["64GB","128GB","256GB"] }. Unlimited
+// attributes, unlimited values each — replaces the old fixed sizes/colors/memory.
+type Attribute = {
+  name: string;
+  values: string[];
+};
+
+// A variant is one combination across all attributes, e.g.
+// { attributes: { Color: "Red", Storage: "128GB" }, qty: 10 }
 type Variant = {
-  size?: string;
-  color?: string;
-  memory?: string;
+  attributes: Record<string, string>;
   qty: number;
+};
+
+/* ================= CARTESIAN PRODUCT HELPER ================= */
+// Builds every combination across N attribute value lists.
+// e.g. [["Red","Blue"], ["64GB","128GB"]] →
+// [["Red","64GB"], ["Red","128GB"], ["Blue","64GB"], ["Blue","128GB"]]
+const cartesian = (arrays: string[][]): string[][] => {
+  if (arrays.length === 0) return [];
+  return arrays.reduce<string[][]>(
+    (acc, curr) => acc.flatMap((a) => curr.map((c) => [...a, c])),
+    [[]]
+  );
 };
 
 const Products: React.FC = () => {
@@ -69,7 +90,13 @@ const Products: React.FC = () => {
     sale_price: 0,
     in_stock: true,
   });
+
+  /* ================= DYNAMIC ATTRIBUTES STATE ================= */
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
+  const [newAttrName, setNewAttrName] = useState("");
+  const [valueDrafts, setValueDrafts] = useState<Record<number, string>>({});
   const [variants, setVariants] = useState<Variant[]>([]);
+
   const [editModal, setEditModal] = useState(false);
 const menuRef = useRef<HTMLDivElement | null>(null);
 useEffect(() => {
@@ -141,67 +168,80 @@ const [editProduct, setEditProduct] = useState({
     fetchBrands();
   }, []);
 
-  const [sizes, setSizes] = useState<string[]>([]);
-  const [colors, setColors] = useState<string[]>([]);
-  const [memory, setMemory] = useState<string[]>([]);
-
-  useEffect(() => {
-    const category = categories.find(
-      (c) => c.id === newProduct.category_id
-    );
-
-    if (!category) return;
-
-    const name = category.name.toLowerCase();
-
-    // CLOTHES
-    if (name.includes("cloth")) {
-      setSizes(["XS", "S", "M", "L", "XL", "XXL"]);
-      setColors([]);
-      setMemory([]);
+  /* ================= ATTRIBUTE HELPERS ================= */
+  const addAttribute = () => {
+    const name = newAttrName.trim();
+    if (!name) return;
+    if (attributes.some((a) => a.name.toLowerCase() === name.toLowerCase())) {
+      showToast("That attribute already exists", "warning");
+      return;
     }
+    setAttributes((prev) => [...prev, { name, values: [] }]);
+    setNewAttrName("");
+    setVariants([]); // combos changed, old qty data is stale
+  };
 
-    // SHOES
-    else if (name.includes("shoe")) {
-      setSizes(["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"]);
-      setColors([]);
-      setMemory([]);
-    }
-
-    // ELECTRONICS
-    else if (name.includes("electronic")) {
-      setSizes([]);
-      setColors(["Blue", "Silver"]);
-      setMemory(["64GB", "128GB", "256GB", "512GB", "1TB"]);
-    }
-
-    // DEFAULT
-    else {
-      setSizes([]);
-      setColors([]);
-      setMemory([]);
-    }
-
-    // Reset variants when category changes
+  const removeAttribute = (index: number) => {
+    setAttributes((prev) => prev.filter((_, i) => i !== index));
+    setValueDrafts((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
     setVariants([]);
-  }, [newProduct.category_id, categories]);
+  };
 
-  // ================= VARIANT HELPER =================
-  const setVariantQty = (
-    key: { size?: string; color?: string; memory?: string },
-    qty: number
-  ) => {
+  const addValueToAttribute = (index: number) => {
+    const value = (valueDrafts[index] || "").trim();
+    if (!value) return;
+
+    setAttributes((prev) =>
+      prev.map((a, i) => {
+        if (i !== index) return a;
+        if (a.values.some((v) => v.toLowerCase() === value.toLowerCase())) {
+          showToast("That value already exists", "warning");
+          return a;
+        }
+        return { ...a, values: [...a.values, value] };
+      })
+    );
+    setValueDrafts((prev) => ({ ...prev, [index]: "" }));
+    setVariants([]);
+  };
+
+  const removeValueFromAttribute = (index: number, value: string) => {
+    setAttributes((prev) =>
+      prev.map((a, i) =>
+        i === index ? { ...a, values: a.values.filter((v) => v !== value) } : a
+      )
+    );
+    setVariants([]);
+  };
+
+  // All attributes must have at least one value before we generate combos
+  const generatedCombos: Record<string, string>[] =
+    attributes.length > 0 && attributes.every((a) => a.values.length > 0)
+      ? cartesian(attributes.map((a) => a.values)).map((combo) =>
+          Object.fromEntries(attributes.map((a, i) => [a.name, combo[i]]))
+        )
+      : [];
+
+  const setVariantQty = (combo: Record<string, string>, qty: number) => {
     setVariants((prev) => {
-      const idx = prev.findIndex(
-        (v) => v.size === key.size && v.color === key.color && v.memory === key.memory
-      );
+      const key = JSON.stringify(combo);
+      const idx = prev.findIndex((v) => JSON.stringify(v.attributes) === key);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], qty };
         return next;
       }
-      return [...prev, { ...key, qty }];
+      return [...prev, { attributes: combo, qty }];
     });
+  };
+
+  const getVariantQty = (combo: Record<string, string>) => {
+    const key = JSON.stringify(combo);
+    return variants.find((v) => JSON.stringify(v.attributes) === key)?.qty ?? "";
   };
 
   // ================= ADD PRODUCT =================
@@ -298,10 +338,10 @@ const resetNewProduct = () => {
     sale_price: 0,
     in_stock: true,
   });
+  setAttributes([]);
+  setNewAttrName("");
+  setValueDrafts({});
   setVariants([]);
-  setSizes([]);
-  setColors([]);
-  setMemory([]);
 };
 
 const resetEditProduct = () => {
@@ -659,7 +699,7 @@ const { showToast } = useToast();
 
               }}
             >
-              <div className="bg-white p-4 rounded" style={{ width: 550, maxHeight: "90vh", overflowY: "auto" ,   position: "relative",
+              <div className="bg-white p-4 rounded" style={{ width: 600, maxHeight: "90vh", overflowY: "auto" ,   position: "relative",
           zIndex: 100000,}}>
 
                 <h5>Add Product</h5>
@@ -771,83 +811,145 @@ const { showToast } = useToast();
                   <label>In Stock</label>
                 </div>
 
-                {/* ================= CLOTHES / SHOES: size + qty per size ================= */}
-                {sizes.length > 0 && (
-                  <div className="mt-2">
-                    <label>Sizes & Qty</label>
-                    <div className="d-flex flex-wrap gap-2 mt-1">
-                      {sizes.map((s) => {
-                        const v = variants.find((x) => x.size === s);
-                        return (
-                          <div
-                            key={s}
-                            className="d-flex align-items-center gap-1 border rounded px-2 py-1"
+                {/* ================= DYNAMIC VARIANT ATTRIBUTES ================= */}
+                <hr className="my-3" />
+                <h6>Variant attributes</h6>
+                <small className="text-muted d-block mb-2">
+                  Add as many attribute types and values as this product needs
+                  — e.g. Color: Red, Blue, Black. Storage: 64GB, 128GB, 256GB.
+                </small>
+
+                {/* ADD NEW ATTRIBUTE */}
+                <div className="d-flex gap-2 mb-3">
+                  <input
+                    className="form-control"
+                    placeholder="Attribute name (e.g. Color, Storage)"
+                    value={newAttrName}
+                    onChange={(e) => setNewAttrName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addAttribute()}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={addAttribute}
+                  >
+                    + Attribute
+                  </button>
+                </div>
+
+                {/* EXISTING ATTRIBUTES */}
+                {attributes.map((attr, idx) => (
+                  <div
+                    key={attr.name}
+                    className="border rounded p-2 mb-2"
+                    style={{ background: "#f8f9fa" }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <strong>{attr.name}</strong>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => removeAttribute(idx)}
+                      >
+                        Remove attribute
+                      </button>
+                    </div>
+
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      {attr.values.map((v) => (
+                        <span
+                          key={v}
+                          className="badge bg-light text-dark border d-flex align-items-center gap-1"
+                          style={{ fontSize: 13, padding: "6px 10px" }}
+                        >
+                          {v}
+                          <span
+                            role="button"
+                            onClick={() => removeValueFromAttribute(idx, v)}
+                            style={{ cursor: "pointer", fontWeight: "bold" }}
                           >
-                            <span style={{ minWidth: 28 }}>{s}</span>
-                            <input
-                              type="number"
-                              min={0}
-                              style={{ width: 56 }}
-                              className="form-control form-control-sm"
-                              placeholder="qty"
-                              value={v?.qty ?? ""}
-                              onChange={(e) =>
-                                setVariantQty({ size: s }, Number(e.target.value))
-                              }
-                            />
-                          </div>
-                        );
-                      })}
+                            ×
+                          </span>
+                        </span>
+                      ))}
+                      {attr.values.length === 0 && (
+                        <small className="text-muted">No values yet</small>
+                      )}
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <input
+                        className="form-control form-control-sm"
+                        placeholder={`Add a ${attr.name.toLowerCase()} value...`}
+                        value={valueDrafts[idx] || ""}
+                        onChange={(e) =>
+                          setValueDrafts((prev) => ({ ...prev, [idx]: e.target.value }))
+                        }
+                        onKeyDown={(e) => e.key === "Enter" && addValueToAttribute(idx)}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => addValueToAttribute(idx)}
+                      >
+                        Add value
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* ================= GENERATED VARIANT COMBINATIONS ================= */}
+                {generatedCombos.length > 0 && (
+                  <div className="mt-3">
+                    <label className="fw-bold">
+                      Variant quantities ({generatedCombos.length} combinations)
+                    </label>
+                    <div
+                      className="border rounded mt-1"
+                      style={{ maxHeight: 260, overflowY: "auto" }}
+                    >
+                      <table className="table table-sm mb-0">
+                        <thead>
+                          <tr>
+                            {attributes.map((a) => (
+                              <th key={a.name}>{a.name}</th>
+                            ))}
+                            <th style={{ width: 100 }}>Qty</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {generatedCombos.map((combo) => (
+                            <tr key={JSON.stringify(combo)}>
+                              {attributes.map((a) => (
+                                <td key={a.name}>{combo[a.name]}</td>
+                              ))}
+                              <td>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className="form-control form-control-sm"
+                                  placeholder="0"
+                                  value={getVariantQty(combo)}
+                                  onChange={(e) =>
+                                    setVariantQty(combo, Number(e.target.value))
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
 
-                {/* ================= ELECTRONICS: memory x color grid ================= */}
-                {memory.length > 0 && colors.length > 0 && (
-                  <div className="mt-2">
-                    <label>Memory × Color Qty</label>
-                    <table className="table table-sm mt-1">
-                      <thead>
-                        <tr>
-                          <th></th>
-                          {colors.map((c) => (
-                            <th key={c}>{c}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {memory.map((m) => (
-                          <tr key={m}>
-                            <td><strong>{m}</strong></td>
-                            {colors.map((c) => {
-                              const v = variants.find(
-                                (x) => x.memory === m && x.color === c
-                              );
-                              return (
-                                <td key={c}>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    style={{ width: 64 }}
-                                    className="form-control form-control-sm"
-                                    placeholder="0"
-                                    value={v?.qty ?? ""}
-                                    onChange={(e) =>
-                                      setVariantQty(
-                                        { memory: m, color: c },
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {attributes.length > 0 &&
+                  attributes.some((a) => a.values.length === 0) && (
+                    <small className="text-warning d-block mt-2">
+                      Add at least one value to every attribute to generate variant
+                      combinations.
+                    </small>
+                  )}
 
                 <div className="d-flex justify-content-end gap-2 mt-3">
                   <button
