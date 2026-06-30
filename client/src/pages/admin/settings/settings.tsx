@@ -60,11 +60,13 @@ const { showToast } = useToast();
       console.error(err);
     }
   };
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user"); // if you store user data
+  sessionStorage.clear(); // optional
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+  navigate("/", { replace: true });
+};
 
   const toggleTheme = () => {
     setDarkMode((prev) => !prev);

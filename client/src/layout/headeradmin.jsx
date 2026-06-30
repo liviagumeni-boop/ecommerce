@@ -22,12 +22,13 @@ function AdminHeader() {
     pageTitles[location.pathname] || "Dashboard";
 
   // 👉 LOGOUT
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user"); // if you store user data
+  sessionStorage.clear(); // optional
 
+  navigate("/", { replace: true });
+};
   // 👉 SETTINGS NAVIGIM
   const goToSettings = () => {
     navigate("/admin/settings");
