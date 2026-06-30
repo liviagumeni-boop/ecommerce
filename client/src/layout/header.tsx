@@ -25,7 +25,24 @@ function Header() {
   const cartRef = useRef<HTMLDivElement>(null);
 const favRef = useRef<HTMLDivElement>(null);
 
-  const isLoggedIn = localStorage.getItem("token");
+  // track login state reactively instead of reading localStorage once
+  const [isLoggedIn, setIsLoggedIn] = useState<string | null>(
+    localStorage.getItem("token")
+  );
+
+  useEffect(() => {
+    const syncAuth = () => setIsLoggedIn(localStorage.getItem("token"));
+
+    // fires when localStorage changes from ANOTHER tab/window
+    window.addEventListener("storage", syncAuth);
+    // fires when we dispatch it ourselves (e.g. after logout in this tab)
+    window.addEventListener("authChanged", syncAuth);
+
+    return () => {
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("authChanged", syncAuth);
+    };
+  }, []);
 
   const { cart, removeFromCart, increaseQty, decreaseQty, addToCart } = useCart();
   const { favorites, removeFromFavorites } = useFavorites();

@@ -120,6 +120,16 @@ showToast("Profile updated", "success");
   setPasswords({ old: "", new: "", confirm: "" });
 };
 
+  /* ================= LOGOUT ================= */
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    // notify Header (and any other listener) in THIS tab that auth changed
+    window.dispatchEvent(new Event("authChanged"));
+    showToast("Logged out", "success");
+    navigate("/login");
+  };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", padding: 20 }}>
 
@@ -141,7 +151,7 @@ showToast("Profile updated", "success");
 
         <div
           style={{ ...menuItem, background: "red", color: "white" }}
-          onClick={() => navigate("/login")}
+          onClick={handleLogout}
         >
           Logout
         </div>
