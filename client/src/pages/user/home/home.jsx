@@ -203,8 +203,14 @@ const toggleFav = (product) => {
         {categories.map((c) => (
           <button
             key={c.id}
-            className="btn btn-sm btn-outline-dark w-100 mb-1"
+            type="button"
+            className="btn btn-sm w-100 mb-1"
             onClick={() => setTempCategory(c.name)}
+            style={{
+              border: "1px solid #ccc",
+              background: tempCategory === c.name ? "#e9ecef" : "white",
+              color: "#333",
+            }}
           >
             {c.name}
           </button>
@@ -214,8 +220,14 @@ const toggleFav = (product) => {
         {brands.map((b) => (
           <button
             key={b.id}
-            className="btn btn-sm btn-outline-primary w-100 mb-1"
+            type="button"
+            className="btn btn-sm w-100 mb-1"
             onClick={() => setTempBrand(b.name)}
+            style={{
+              border: "1px solid #bcdcfb",
+              background: tempBrand === b.name ? "#e6f1fb" : "white",
+              color: "#185fa5",
+            }}
           >
             {b.name}
           </button>
