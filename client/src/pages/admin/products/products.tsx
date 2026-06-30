@@ -267,6 +267,7 @@ const [editProduct, setEditProduct] = useState({
       },
     });
 
+    showToast("Product created successfully", "success"); // ✅ HERE
     resetNewProduct();
     fetchProducts();
     setShowModal(false);
@@ -288,6 +289,7 @@ const updateProduct = async () => {
   }
 
   await api.put(`/products/${editProduct.id}`, formData);
+   showToast("Product updated successfully", "success"); // ✅ HERE
 
   showToast("Product updated");
   resetEditProduct();
@@ -298,7 +300,8 @@ const updateProduct = async () => {
   const deleteProduct = async (id: number) => {
     try {
       await api.delete(`/products/${id}`);
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setProducts((prev) => prev.filter((p) => p.id !== id));  showToast("Product deleted successfully", "success"); // ✅ HERE
+      
     } catch (err) {
       console.log(err);
    showToast("Delete faild");
@@ -359,7 +362,24 @@ const resetEditProduct = () => {
     in_stock: true,
   });
 };
+const addModalRef = useRef<HTMLDivElement | null>(null);
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (!addModalRef.current) return;
 
+    if (!addModalRef.current.contains(event.target as Node)) {
+      setShowModal(false);
+    }
+  };
+
+  if (showModal) {
+    document.addEventListener("mousedown", handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [showModal]);
 const { showToast } = useToast();
   return (
     <div className="d-flex">
@@ -671,6 +691,20 @@ const { showToast } = useToast();
 
       <div className="d-flex justify-content-end gap-2 mt-3">
         <button
+  onClick={() => setShowModal(false)} // or setEditModal(false) etc.
+  style={{
+    position: "absolute",
+    top: 10,
+    right: 10,
+    border: "none",
+    background: "transparent",
+    fontSize: 20,
+    cursor: "pointer",
+  }}
+>
+  ×
+</button>
+        <button
           className="btn btn-secondary"
           onClick={() => {
             resetEditProduct();
@@ -953,6 +987,20 @@ const { showToast } = useToast();
 
                 <div className="d-flex justify-content-end gap-2 mt-3">
                   <button
+  onClick={() => setShowModal(false)} // or setEditModal(false) etc.
+  style={{
+    position: "absolute",
+    top: 10,
+    right: 10,
+    border: "none",
+    background: "transparent",
+    fontSize: 20,
+    cursor: "pointer",
+  }}
+>
+  ×
+</button>
+                  <button
                     className="btn btn-secondary"
                     onClick={() => {
                       resetNewProduct();
@@ -1008,14 +1056,27 @@ const { showToast } = useToast();
                 zIndex: 9999,
               }}
             >
-              <div className="bg-white p-4 rounded shadow" style={{ width: 350 }}>
+              <div ref={addModalRef} className="bg-white p-4 rounded shadow" style={{ width: 350 }}>
 
                 <h5>Confirm Delete</h5>
 
                 <p>Are you sure you want to delete this product?</p>
 
                 <div className="d-flex justify-content-end gap-2">
-
+<button
+  onClick={() => setShowModal(false)} // or setEditModal(false) etc.
+  style={{
+    position: "absolute",
+    top: 10,
+    right: 10,
+    border: "none",
+    background: "transparent",
+    fontSize: 20,
+    cursor: "pointer",
+  }}
+>
+  ×
+</button>
                   <button
                     className="btn btn-secondary"
                     onClick={() => setDeleteModal(null)}

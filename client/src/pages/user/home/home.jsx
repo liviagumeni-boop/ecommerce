@@ -42,8 +42,8 @@ useEffect(() => {
     }
   }
 }, []);
-  const [category, setCategory] = useState("All");
-  const [brand, setBrand] = useState("All");
+const [category, setCategory] = useState([]);
+const [brand, setBrand] = useState([]);
   const [search, setSearch] = useState("");
   const [slide, setSlide] = useState(0);
 
@@ -56,8 +56,8 @@ useEffect(() => {
   }, []); // carousel is now stable (defined outside), so [] is safe
 
   const [openFilter, setOpenFilter] = useState(false);
-  const [tempCategory, setTempCategory] = useState("All");
-  const [tempBrand, setTempBrand] = useState("All");
+const [tempCategory, setTempCategory] = useState([]);
+const [tempBrand, setTempBrand] = useState([]);
   const [tempSort, setTempSort] = useState("");
   const [priceRange, setPriceRange] = useState(2500);
   const [sort, setSort] = useState("");
@@ -118,12 +118,12 @@ const toggleFav = (product) => {
     setOpenFilter(false);
   };
 
-  const clearFilters = () => {
-    setTempCategory("All");
-    setTempBrand("All");
-    setTempSort("");
-    setPriceRange(2500);
-  };
+const clearFilters = () => {
+  setTempCategory([]);
+  setTempBrand([]);
+  setTempSort("");
+  setPriceRange(2500);
+};
 
   const getOptionsByCategory = (product) => {
     const cat = product?.category_name?.toLowerCase() || "";
@@ -140,15 +140,31 @@ const toggleFav = (product) => {
     return { sizes: [], colors: [], memory: [] };
   };
 
-  const filtered = products.filter((p) =>
-    (category === "All" || p.category_name === category) &&
-    (brand === "All" || p.brand_name === brand) &&
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+const filtered = products.filter((p) =>
+  (tempCategory.length === 0 || tempCategory.includes(p.category_name)) &&
+  (tempBrand.length === 0 || tempBrand.includes(p.brand_name)) &&
+  p.name.toLowerCase().includes(search.toLowerCase())
+);
 
   const options = selectedProduct
     ? getOptionsByCategory(selectedProduct)
     : { sizes: [], colors: [], memory: [] };
+
+const toggleCategory = (name) => {
+  setTempCategory((prev) =>
+    prev.includes(name)
+      ? prev.filter((c) => c !== name)
+      : [...prev, name]
+  );
+};
+
+const toggleBrand = (name) => {
+  setTempBrand((prev) =>
+    prev.includes(name)
+      ? prev.filter((b) => b !== name)
+      : [...prev, name]
+  );
+};
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -205,10 +221,10 @@ const toggleFav = (product) => {
             key={c.id}
             type="button"
             className="btn btn-sm w-100 mb-1"
-            onClick={() => setTempCategory(c.name)}
+            onClick={() => toggleCategory(c.name)}
             style={{
               border: "1px solid #ccc",
-              background: tempCategory === c.name ? "#e9ecef" : "white",
+              background: tempCategory.includes(c.name) ? "#e9ecef" : "white",
               color: "#333",
             }}
           >
@@ -222,10 +238,10 @@ const toggleFav = (product) => {
             key={b.id}
             type="button"
             className="btn btn-sm w-100 mb-1"
-            onClick={() => setTempBrand(b.name)}
+            onClick={() => toggleBrand(b.name)}
             style={{
               border: "1px solid #bcdcfb",
-              background: tempBrand === b.name ? "#e6f1fb" : "white",
+              background: tempBrand.includes(b.name) ? "#e6f1fb" : "white",
               color: "#185fa5",
             }}
           >

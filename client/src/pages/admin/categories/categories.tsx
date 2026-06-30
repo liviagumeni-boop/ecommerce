@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import api from "../../../api/axios";
-
+import { useToast } from "../../../componets/common/ToastContext";
 /* ================= TYPES ================= */
 type Category = {
   id: number;
@@ -17,6 +17,7 @@ type Brand = {
 };
 
 const Categories: React.FC = () => {
+  const { showToast } = useToast();
   /* ================= STATES ================= */
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -76,6 +77,7 @@ const [openMenu, setOpenMenu] = useState<{
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     await api.post("/categories", { name: newCategory });
+    showToast("Category created", "success");
     setNewCategory("");
     setShowCategoryModal(false);
     fetchCategories();
@@ -84,6 +86,7 @@ const [openMenu, setOpenMenu] = useState<{
   const updateCategory = async () => {
     if (!editCategoryId) return;
     await api.put(`/categories/${editCategoryId}`, { name: editCategoryValue });
+    showToast("Category updated", "success");
     setEditCategoryId(null);
     setEditCategoryValue("");
     fetchCategories();
@@ -91,6 +94,7 @@ const [openMenu, setOpenMenu] = useState<{
 
   const deleteCategory = async (id: number) => {
     await api.delete(`/categories/${id}`);
+    showToast("Category deleted", "success");
     setDeleteConfirm({ type: null, id: null });
     fetchCategories();
   };
@@ -99,6 +103,7 @@ const [openMenu, setOpenMenu] = useState<{
   const addBrand = async () => {
     if (!newBrand.name || !newBrand.category_id) return;
     await api.post("/brands", newBrand);
+    showToast("Brand created", "success");
     setNewBrand({ name: "", category_id: 0 });
     setShowBrandModal(false);
     fetchBrands();
@@ -110,6 +115,7 @@ const [openMenu, setOpenMenu] = useState<{
       name: editBrandValue,
       category_id: brands.find((b) => b.id === editBrandId)?.category_id,
     });
+    showToast("Brand updated", "success");
     setEditBrandId(null);
     setEditBrandValue("");
     fetchBrands();
@@ -117,6 +123,7 @@ const [openMenu, setOpenMenu] = useState<{
 
   const deleteBrand = async (id: number) => {
     await api.delete(`/brands/${id}`);
+    showToast("Brand deleted", "success");
     setDeleteConfirm({ type: null, id: null });
     fetchBrands();
   };
