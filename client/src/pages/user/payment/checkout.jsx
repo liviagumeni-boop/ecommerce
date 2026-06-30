@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "../../../api/axios";
 import { useCart } from "../../../componets/common/Cartcontext";
+import { useToast } from "../../../componets/common/ToastContext";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   EmbeddedCheckoutProvider,
@@ -11,51 +13,39 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Checkout = () => {
   const { cart } = useCart();
-  const user = JSON.parse(localStorage.getItem("user"));
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const user = JSON.parse(localStorage.getItem("user") || "null");
   const userId = user?.id;
+
+  // ── Guest guard: toast instead of a separate locked layout ──────────────
+  useEffect(() => {
+    if (!userId) {
+      showToast("Please log in or create an account to checkout", "warning");
+      navigate("/login");
+    }
+  }, [userId]);
+
   if (!userId) {
-    return (
-      <div style={{
-        minHeight: "100vh",
-        background: "#f4f6fb",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <div style={{
-          background: "white",
-          padding: 40,
-          borderRadius: 12,
-          textAlign: "center",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-          maxWidth: 400,
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-          <h2 style={{ marginBottom: 8 }}>Please log in to continue</h2>
-          <p style={{ color: "#666", marginBottom: 24 }}>
-            You need an account to complete your purchase.
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-        
-          </div>
-        </div>
-      </div>
-    );
+    // brief flash before redirect fires; render nothing
+    return null;
   }
+
   const total = cart.reduce(
     (sum, item) => sum + item.sale_price * item.qty,
     0
   );
 
-const fetchClientSecret = async () => {
-  if (!cart.length) throw new Error("Cart is empty"); // ← add this guard
-  const res = await axios.post(
-    "/payment/create-checkout-session",
-    { items: cart },
-    { headers: { userid: userId } }
-  );
-  return res.data.clientSecret;
-};
+  const fetchClientSecret = async () => {
+    if (!cart.length) throw new Error("Cart is empty");
+    const res = await axios.post(
+      "/payment/create-checkout-session",
+      { items: cart },
+      { headers: { userid: userId } }
+    );
+    return res.data.clientSecret;
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#f4f6fb", padding: 40 }}>
@@ -73,7 +63,7 @@ const fetchClientSecret = async () => {
         <EmbeddedCheckoutProvider
           stripe={stripePromise}
           options={{ fetchClientSecret }}
-        > 
+        >
           <EmbeddedCheckout />
         </EmbeddedCheckoutProvider>
       </div>

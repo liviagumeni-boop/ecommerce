@@ -60,6 +60,7 @@ router.post("/create-checkout-session", async (req, res) => {
     }
 
     // 5. Create Stripe embedded session
+    // store the orderId on the session so we can update it on confirmation
     const session = await stripe.checkout.sessions.create({
       ui_mode: "embedded_page",
       mode: "payment",
@@ -71,6 +72,7 @@ router.post("/create-checkout-session", async (req, res) => {
         },
         quantity: item.qty,
       })),
+      metadata: { orderId: String(orderId) },
       return_url: `${process.env.STRIPE_RETURN_URL}?session_id={CHECKOUT_SESSION_ID}`,
     });
 
@@ -78,6 +80,29 @@ router.post("/create-checkout-session", async (req, res) => {
 
   } catch (err) {
     console.error("Payment error FULL:", err.message); // ← paste what this shows
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// ================= SESSION STATUS =================
+// Used by the single CheckoutReturn page (toast-based) instead of
+// separate success/failed pages. Order status stays "Pending" —
+// not flipped here.
+router.get("/session-status", async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    if (!session_id) {
+      return res.status(400).json({ message: "Missing session_id" });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    return res.json({
+      status: session.status,
+      payment_status: session.payment_status,
+    });
+  } catch (err) {
+    console.error("Session status error:", err.message);
     return res.status(500).json({ message: err.message });
   }
 });

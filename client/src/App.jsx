@@ -10,6 +10,8 @@ import Footer from "./layout/footer";
 import Home from "./pages/user/home/home";
 import Cart from "./pages/user/cart/cart";
 import Checkout from "./pages/user/payment/checkout";
+import CheckoutReturn from "./pages/user/payment/checkoutreturn";
+
 import Profile from "./pages/user/profili/profil";
 import Login from "./pages/user/home/login";
 import UserOrders from "./pages/user/order/order";
@@ -97,7 +99,7 @@ function App() {
                   </UserLayout>
                 }
               />
-
+<Route path="/checkout/return" element={<CheckoutReturn />} />
               <Route
                 path="/payment-success"
                 element={
