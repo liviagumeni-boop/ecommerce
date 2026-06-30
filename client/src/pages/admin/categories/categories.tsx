@@ -121,6 +121,26 @@ const [openMenu, setOpenMenu] = useState<{
     fetchBrands();
   };
 
+  /* ================= RESET HELPERS ================= */
+  const resetNewCategory = () => {
+    setNewCategory("");
+  };
+
+  const resetNewBrand = () => {
+    setNewBrand({ name: "", category_id: 0 });
+  };
+
+  const resetEditCategory = () => {
+    setEditCategoryId(null);
+    setEditCategoryValue("");
+  };
+
+  const resetEditBrand = () => {
+    setEditBrandId(null);
+    setEditBrandValue("");
+    setEditBrandCategory(0);
+  };
+
   /* ================= DROPDOWN STYLE ================= */
 const dropdownStyle: React.CSSProperties = {
   position: "fixed",
@@ -368,7 +388,10 @@ const dropdownStyle: React.CSSProperties = {
       <div className="d-flex justify-content-end gap-2">
         <button
           className="btn btn-secondary"
-          onClick={() => setShowEditBrandModal(false)}
+          onClick={() => {
+            resetEditBrand();
+            setShowEditBrandModal(false);
+          }}
         >
           Cancel
         </button>
@@ -381,6 +404,7 @@ const dropdownStyle: React.CSSProperties = {
               category_id: editBrandCategory,
             });
 
+            resetEditBrand();
             setShowEditBrandModal(false);
             fetchBrands();
           }}
@@ -416,7 +440,10 @@ const dropdownStyle: React.CSSProperties = {
       <div className="d-flex justify-content-end gap-2">
         <button
           className="btn btn-secondary"
-          onClick={() => setShowEditCategoryModal(false)}
+          onClick={() => {
+            resetEditCategory();
+            setShowEditCategoryModal(false);
+          }}
         >
           Cancel
         </button>
@@ -449,7 +476,13 @@ const dropdownStyle: React.CSSProperties = {
                   onChange={(e) => setNewCategory(e.target.value)}
                 />
                 <div className="d-flex justify-content-end gap-2">
-                  <button className="btn btn-secondary" onClick={() => setShowCategoryModal(false)}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      resetNewCategory();
+                      setShowCategoryModal(false);
+                    }}
+                  >
                     Cancel
                   </button>
                   <button className="btn btn-primary" onClick={addCategory}>
@@ -487,7 +520,13 @@ const dropdownStyle: React.CSSProperties = {
                   ))}
                 </select>
                 <div className="d-flex justify-content-end gap-2">
-                  <button className="btn btn-secondary" onClick={() => setShowBrandModal(false)}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      resetNewBrand();
+                      setShowBrandModal(false);
+                    }}
+                  >
                     Cancel
                   </button>
                   <button className="btn btn-primary" onClick={addBrand}>

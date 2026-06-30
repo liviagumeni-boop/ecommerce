@@ -1,4 +1,3 @@
-
 //kërkesa në API (axios / fetch)
 //ruajtje në localStorage
 //timers (setTimeout, setInterval)
@@ -228,7 +227,7 @@ const [editProduct, setEditProduct] = useState({
       },
     });
 
-    setVariants([]);
+    resetNewProduct();
     fetchProducts();
     setShowModal(false);
   };
@@ -251,6 +250,7 @@ const updateProduct = async () => {
   await api.put(`/products/${editProduct.id}`, formData);
 
   showToast("Product updated");
+  resetEditProduct();
   setEditModal(false);
   fetchProducts();
 };
@@ -282,6 +282,42 @@ const updateProduct = async () => {
   });
 
   setEditModal(true);
+};
+
+// ================= RESET HELPERS =================
+const resetNewProduct = () => {
+  setNewProduct({
+    name: "",
+    description: "",
+    brand_id: 0,
+    category_id: 0,
+    image: null,
+    stock: 0,
+    qty: 0,
+    purchase_price: 0,
+    sale_price: 0,
+    in_stock: true,
+  });
+  setVariants([]);
+  setSizes([]);
+  setColors([]);
+  setMemory([]);
+};
+
+const resetEditProduct = () => {
+  setEditProduct({
+    id: 0,
+    name: "",
+    description: "",
+    brand_id: 0,
+    category_id: 0,
+    image: null,
+    stock: 0,
+    qty: 0,
+    purchase_price: 0,
+    sale_price: 0,
+    in_stock: true,
+  });
 };
 
 const { showToast } = useToast();
@@ -596,7 +632,10 @@ const { showToast } = useToast();
       <div className="d-flex justify-content-end gap-2 mt-3">
         <button
           className="btn btn-secondary"
-          onClick={() => setEditModal(false)}
+          onClick={() => {
+            resetEditProduct();
+            setEditModal(false);
+          }}
         >
           Cancel
         </button>
@@ -628,6 +667,7 @@ const { showToast } = useToast();
                 <input
                   className="form-control my-2"
                   placeholder="Name"
+                  value={newProduct.name}
                   onChange={(e) =>
                     setNewProduct({ ...newProduct, name: e.target.value })
                   }
@@ -636,6 +676,7 @@ const { showToast } = useToast();
                 <input
                   className="form-control my-2"
                   placeholder="Description"
+                  value={newProduct.description}
                   onChange={(e) =>
                     setNewProduct({ ...newProduct, description: e.target.value })
                   }
@@ -693,6 +734,7 @@ const { showToast } = useToast();
                   type="number"
                   className="form-control my-2"
                   placeholder="Purchase Price"
+                  value={newProduct.purchase_price || ""}
                   onChange={(e) =>
                     setNewProduct({
                       ...newProduct,
@@ -705,6 +747,7 @@ const { showToast } = useToast();
                   type="number"
                   className="form-control my-2"
                   placeholder="Sale Price"
+                  value={newProduct.sale_price || ""}
                   onChange={(e) =>
                     setNewProduct({
                       ...newProduct,
@@ -717,6 +760,7 @@ const { showToast } = useToast();
                   <input
                     type="checkbox"
                     className="form-check-input"
+                    checked={newProduct.in_stock}
                     onChange={(e) =>
                       setNewProduct({
                         ...newProduct,
@@ -808,7 +852,10 @@ const { showToast } = useToast();
                 <div className="d-flex justify-content-end gap-2 mt-3">
                   <button
                     className="btn btn-secondary"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      resetNewProduct();
+                      setShowModal(false);
+                    }}
                   >
                     Cancel
                   </button>
