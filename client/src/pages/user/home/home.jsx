@@ -238,12 +238,14 @@ const toggleFav = (product) => {
           style={{ width: "100%", marginTop: 10 }}
         />
 
-        <button className="btn btn-success w-100 mt-2" onClick={applyFilters}>
-          SAVE
-        </button>
-        <button className="btn btn-danger w-100 mt-2" onClick={clearFilters}>
-          CLEAR
-        </button>
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button className="btn btn-danger flex-fill" onClick={clearFilters}>
+            CLEAR
+          </button>
+          <button className="btn btn-success flex-fill" onClick={applyFilters}>
+            SAVE
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex" }}>
