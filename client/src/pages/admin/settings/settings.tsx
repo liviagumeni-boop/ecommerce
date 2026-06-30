@@ -61,11 +61,10 @@ const { showToast } = useToast();
     }
   };
 const handleLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user"); // if you store user data
-  sessionStorage.clear(); // optional
+  localStorage.removeItem("adminToken");
+  localStorage.removeItem("admin");
 
-  navigate("/", { replace: true });
+  window.location.href = "/";
 };
 
   const toggleTheme = () => {

@@ -6,14 +6,16 @@ interface Props {
 }
 
 const AdminRoute: React.FC<Props> = ({ children }) => {
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+  const token = localStorage.getItem("adminToken");
+  const admin = localStorage.getItem("admin");
+
+  const parsedAdmin = admin ? JSON.parse(admin) : null;
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  if (role !== "admin") {
+  if (!parsedAdmin || parsedAdmin.role !== "admin") {
     return <Navigate to="/" replace />;
   }
 

@@ -1,37 +1,53 @@
 import { useState } from "react";
-import axios from "../../../api/axios";
-import { loginUser } from "../../../api/login";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "../../../componets/common/ToastContext";
 import { FcGoogle } from "react-icons/fc";
+
+import { loginUser } from "../../../api/login";
+import { useToast } from "../../../componets/common/ToastContext";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-const navigate = useNavigate();
-const { showToast } = useToast();
-  const handleLogin = async (e) => {
+
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
+const handleLogin = async (e) => {
   e.preventDefault();
 
   try {
     const { token, user } = await loginUser(email, password);
 
-    localStorage.setItem("token", token);
-  localStorage.setItem("user", JSON.stringify(user));
-localStorage.setItem("role", user.role);
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("admin");
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("user");
+
     if (user.role === "admin") {
+      localStorage.setItem("adminToken", token);
+      localStorage.setItem("admin", JSON.stringify(user));
+
       window.location.href = "/admin";
     } else {
+      localStorage.setItem("userToken", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
       window.location.href = "/";
     }
   } catch (err) {
     console.log(err.response?.data);
-     showToast(err.response?.data?.message || "Email ose password gabim", "error");
+    showToast(
+      err.response?.data?.message || "Email or password is incorrect",
+      "error"
+    );
   }
 };
 
-const loginWithGoogle = () => {
-  window.location.href = `${import.meta.env.VITE_BACKEND_URL}/api/auth/google`;
-};
+  const loginWithGoogle = () => {
+    window.location.href = `${
+      import.meta.env.VITE_BACKEND_URL
+    }/api/auth/google`;
+  };
 
   return (
     <div
@@ -106,31 +122,35 @@ const loginWithGoogle = () => {
             Login
           </button>
 
-     <button
-  type="button"
-  onClick={loginWithGoogle}
-  style={{
-    padding: "12px",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    background: "white",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    fontWeight: "500",
-  }}
->
-  <FcGoogle size={20} />
-  Login with Google
-</button>
-            <p style={{ textAlign: "center", marginTop: "15px" }}>
-          Do not have a account ?{" "}
-          <span onClick={() => navigate("/signup")} style={{ color: "blue", cursor: "pointer" }}>
-            Sign up 
-          </span>
-        </p>
+          <button
+            type="button"
+            onClick={loginWithGoogle}
+            style={{
+              padding: "12px",
+              border: "1px solid #ddd",
+              borderRadius: "10px",
+              background: "white",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              fontWeight: "500",
+            }}
+          >
+            <FcGoogle size={20} />
+            Login with Google
+          </button>
+
+          <p style={{ textAlign: "center", marginTop: "15px" }}>
+            Do not have an account?{" "}
+            <span
+              onClick={() => navigate("/signup")}
+              style={{ color: "blue", cursor: "pointer" }}
+            >
+              Sign up
+            </span>
+          </p>
         </form>
       </div>
     </div>
