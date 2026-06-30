@@ -159,6 +159,17 @@ const dropdownStyle: React.CSSProperties = {
   zIndex: 999999,
   minWidth: "140px",
 };
+
+const closeBtnStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "10px",
+  right: "12px",
+  border: "none",
+  background: "transparent",
+  fontSize: "20px",
+  cursor: "pointer",
+};
+
   return (
     <div className="d-flex">
       <Sidebar />
@@ -358,20 +369,32 @@ const dropdownStyle: React.CSSProperties = {
               </button>
             </div>
           </div>
-          {showEditBrandModal && (
+        {showEditBrandModal && (
   <div
     className="d-flex align-items-center justify-content-center"
     style={{
       position: "fixed",
       inset: 0,
-      background: "rgba(0,0,0,.5)",
+      background: "rgba(0,0,0,0.5)",
       zIndex: 99999999,
     }}
+    onClick={() => setShowEditBrandModal(false)}
   >
     <div
       className="bg-white p-4 rounded shadow"
-      style={{ width: 400 }}
+      style={{ width: 400, position: "relative" }}
+      onClick={(e) => e.stopPropagation()}
     >
+      <button
+        style={closeBtnStyle}
+        onClick={() => {
+          resetEditBrand();
+          setShowEditBrandModal(false);
+        }}
+      >
+        ×
+      </button>
+
       <h5>Edit Brand</h5>
 
       <input
@@ -428,14 +451,26 @@ const dropdownStyle: React.CSSProperties = {
     style={{
       position: "fixed",
       inset: 0,
-      background: "rgba(0,0,0,.5)",
+      background: "rgba(0,0,0,0.5)",
       zIndex: 99999999,
     }}
+    onClick={() => setShowEditCategoryModal(false)}
   >
     <div
       className="bg-white p-4 rounded shadow"
-      style={{ width: 400 }}
+      style={{ width: 400, position: "relative" }}
+      onClick={(e) => e.stopPropagation()}
     >
+      <button
+        style={closeBtnStyle}
+        onClick={() => {
+          resetEditCategory();
+          setShowEditCategoryModal(false);
+        }}
+      >
+        ×
+      </button>
+
       <h5>Edit Category</h5>
 
       <input
@@ -469,112 +504,182 @@ const dropdownStyle: React.CSSProperties = {
   </div>
 )}
           {/* ================= CATEGORY MODAL ================= */}
-          {showCategoryModal && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
-            >
-              <div className="bg-white p-4 rounded shadow" style={{ width: "400px" }}>
-                <h5 className="mb-3">Add Category</h5>
-                <input
-                  className="form-control mb-3"
-                  placeholder="Category name..."
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                />
-                <div className="d-flex justify-content-end gap-2">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      resetNewCategory();
-                      setShowCategoryModal(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button className="btn btn-primary" onClick={addCategory}>
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+       {showCategoryModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 9999,
+    }}
+    onClick={() => setShowCategoryModal(false)}
+  >
+    <div
+      className="bg-white p-4 rounded shadow"
+      style={{ width: "400px", position: "relative" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button style={closeBtnStyle} onClick={() => setShowCategoryModal(false)}>
+        ×
+      </button>
+
+      <h5 className="mb-3">Add Category</h5>
+
+      <input
+        className="form-control mb-3"
+        placeholder="Category name..."
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+      />
+
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            resetNewCategory();
+            setShowCategoryModal(false);
+          }}
+        >
+          Cancel
+        </button>
+
+        <button className="btn btn-primary" onClick={addCategory}>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
           {/* ================= BRAND MODAL ================= */}
-          {showBrandModal && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
-            >
-              <div className="bg-white p-4 rounded shadow" style={{ width: "400px" }}>
-                <h5 className="mb-3">Add Brand</h5>
-                <input
-                  className="form-control mb-3"
-                  placeholder="Brand name..."
-                  value={newBrand.name}
-                  onChange={(e) => setNewBrand({ ...newBrand, name: e.target.value })}
-                />
-                <select
-                  className="form-control mb-3"
-                  value={newBrand.category_id}
-                  onChange={(e) => setNewBrand({ ...newBrand, category_id: Number(e.target.value) })}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="d-flex justify-content-end gap-2">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      resetNewBrand();
-                      setShowBrandModal(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button className="btn btn-primary" onClick={addBrand}>
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+       {showBrandModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 9999,
+    }}
+    onClick={() => setShowBrandModal(false)}
+  >
+    <div
+      className="bg-white p-4 rounded shadow"
+      style={{ width: "400px", position: "relative" }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button style={closeBtnStyle} onClick={() => setShowBrandModal(false)}>
+        ×
+      </button>
+
+      <h5 className="mb-3">Add Brand</h5>
+
+      <input
+        className="form-control mb-3"
+        placeholder="Brand name..."
+        value={newBrand.name}
+        onChange={(e) => setNewBrand({ ...newBrand, name: e.target.value })}
+      />
+
+      <select
+        className="form-control mb-3"
+        value={newBrand.category_id}
+        onChange={(e) =>
+          setNewBrand({ ...newBrand, category_id: Number(e.target.value) })
+        }
+      >
+        <option value="">Select Category</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            resetNewBrand();
+            setShowBrandModal(false);
+          }}
+        >
+          Cancel
+        </button>
+
+        <button className="btn btn-primary" onClick={addBrand}>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
           {/* ================= DELETE CONFIRM ================= */}
-          {deleteConfirm.id && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999 }}
-            >
-              <div className="bg-white p-4 rounded shadow" style={{ width: "350px" }}>
-                <h5 className="mb-3">Are you sure?</h5>
-                <p className="text-muted">This action cannot be undone.</p>
-                <div className="d-flex justify-content-end gap-2">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setDeleteConfirm({ type: null, id: null })}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() =>
-                      deleteConfirm.type === "category"
-                        ? deleteCategory(deleteConfirm.id!)
-                        : deleteBrand(deleteConfirm.id!)
-                    }
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+   {deleteConfirm.id && (
+  <div
+    onClick={() => setDeleteConfirm({ type: null, id: null })}
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 9999,
+    }}
+  >
+    {/* MODAL BOX */}
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="bg-white p-4 rounded shadow"
+      style={{
+        width: "350px",
+        position: "relative",
+      }}
+    >
+      {/* X BUTTON */}
+      <button
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "12px",
+          border: "none",
+          background: "transparent",
+          fontSize: "20px",
+          cursor: "pointer",
+        }}
+        onClick={() => setDeleteConfirm({ type: null, id: null })}
+      >
+        ×
+      </button>
 
+      {/* CONTENT */}
+      <h5 className="mb-3">Are you sure?</h5>
+      <p className="text-muted">This action cannot be undone.</p>
+
+      {/* ACTION BUTTONS */}
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => setDeleteConfirm({ type: null, id: null })}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="btn btn-danger"
+          onClick={() => {
+            deleteConfirm.type === "category"
+              ? deleteCategory(deleteConfirm.id!)
+              : deleteBrand(deleteConfirm.id!);
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         </div>
       </div>
     </div>

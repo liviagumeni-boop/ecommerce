@@ -363,11 +363,10 @@ const resetEditProduct = () => {
   });
 };
 const addModalRef = useRef<HTMLDivElement | null>(null);
+
 useEffect(() => {
   const handleClickOutside = (event: MouseEvent) => {
-    if (!addModalRef.current) return;
-
-    if (!addModalRef.current.contains(event.target as Node)) {
+    if (addModalRef.current && !addModalRef.current.contains(event.target as Node)) {
       setShowModal(false);
     }
   };
@@ -605,11 +604,37 @@ const { showToast } = useToast();
   >
     <div
       className="bg-white p-4 rounded"
-      style={{ width: 550, maxHeight: "90vh", overflowY: "auto",   position: "relative",
-      zIndex: 100000, }}
+      style={{
+        width: 650,
+        maxHeight: "90vh",
+        overflowY: "auto",
+        position: "relative",
+        zIndex: 100000,
+      }}
+      onClick={(e) => e.stopPropagation()}
     >
+      {/* CLOSE */}
+      <button
+        onClick={() => {
+          resetEditProduct();
+          setEditModal(false);
+        }}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          border: "none",
+          background: "transparent",
+          fontSize: 20,
+          cursor: "pointer",
+        }}
+      >
+        ×
+      </button>
+
       <h5>Edit Product</h5>
 
+      {/* NAME */}
       <input
         className="form-control my-2"
         value={editProduct.name}
@@ -617,54 +642,68 @@ const { showToast } = useToast();
           setEditProduct({ ...editProduct, name: e.target.value })
         }
       />
-<select
-  className="form-control my-2"
-  value={editProduct.brand_id}
-  onChange={(e) =>
-    setEditProduct({
-      ...editProduct,
-      brand_id: Number(e.target.value),
-    })
-  }
->
-  <option value="">Select Brand</option>
-  {brands.map((b) => (
-    <option key={b.id} value={b.id}>
-      {b.name}
-    </option>
-  ))}
-</select>
 
-{/* CATEGORY */}
-<select
-  className="form-control my-2"
-  value={editProduct.category_id}
-  onChange={(e) =>
-    setEditProduct({
-      ...editProduct,
-      category_id: Number(e.target.value),
-    })
-  }
->
-  <option value="">Select Category</option>
-  {categories.map((c) => (
-    <option key={c.id} value={c.id}>
-      {c.name}
-    </option>
-  ))}
-</select>
-<input
-  type="number"
-  className="form-control my-2"
-  value={editProduct.qty}
-  onChange={(e) =>
-    setEditProduct({
-      ...editProduct,
-      qty: Number(e.target.value),
-    })
-  }
-  placeholder="Qty"
-/>
+      {/* DESCRIPTION */}
+      <input
+        className="form-control my-2"
+        value={editProduct.description}
+        onChange={(e) =>
+          setEditProduct({ ...editProduct, description: e.target.value })
+        }
+      />
+
+      {/* BRAND */}
+      <select
+        className="form-control my-2"
+        value={editProduct.brand_id}
+        onChange={(e) =>
+          setEditProduct({
+            ...editProduct,
+            brand_id: Number(e.target.value),
+          })
+        }
+      >
+        <option value="">Select Brand</option>
+        {brands.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+      </select>
+
+      {/* CATEGORY */}
+      <select
+        className="form-control my-2"
+        value={editProduct.category_id}
+        onChange={(e) =>
+          setEditProduct({
+            ...editProduct,
+            category_id: Number(e.target.value),
+          })
+        }
+      >
+        <option value="">Select Category</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      {/* QTY */}
+      <input
+        type="number"
+        className="form-control my-2"
+        value={editProduct.qty}
+        onChange={(e) =>
+          setEditProduct({
+            ...editProduct,
+            qty: Number(e.target.value),
+          })
+        }
+      />
+
+      {/* PRICES */}
       <input
         type="number"
         className="form-control my-2"
@@ -689,21 +728,145 @@ const { showToast } = useToast();
         }
       />
 
+      {/* IMAGE */}
+      <input
+        type="file"
+        className="form-control my-2"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          setEditProduct({
+            ...editProduct,
+            image: file || null,
+          });
+        }}
+      />
+
+      {/* STOCK */}
+      <div className="form-check my-2">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          checked={editProduct.in_stock}
+          onChange={(e) =>
+            setEditProduct({
+              ...editProduct,
+              in_stock: e.target.checked,
+            })
+          }
+        />
+        <label>In Stock</label>
+      </div>
+
+      {/* ================= ATTRIBUTES ================= */}
+      <hr />
+      <h6>Attributes (Variants)</h6>
+
+      <div className="d-flex gap-2 mb-2">
+        <input
+          className="form-control"
+          placeholder="Attribute name"
+          value={newAttrName}
+          onChange={(e) => setNewAttrName(e.target.value)}
+        />
+        <button className="btn btn-outline-primary" onClick={addAttribute}>
+          + Add
+        </button>
+      </div>
+
+      {attributes.map((attr, idx) => (
+        <div key={idx} className="border p-2 mb-2 rounded bg-light">
+          <div className="d-flex justify-content-between">
+            <strong>{attr.name}</strong>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={() => removeAttribute(idx)}
+            >
+              Remove
+            </button>
+          </div>
+
+          <div className="d-flex flex-wrap gap-2 mt-2">
+            {attr.values.map((v) => (
+              <span
+                key={v}
+                className="badge bg-secondary d-flex align-items-center gap-1"
+              >
+                {v}
+                <span
+                  style={{ cursor: "pointer" }}
+                  onClick={() => removeValueFromAttribute(idx, v)}
+                >
+                  ×
+                </span>
+              </span>
+            ))}
+          </div>
+
+          <div className="d-flex gap-2 mt-2">
+            <input
+              className="form-control form-control-sm"
+              placeholder="Add value"
+              value={valueDrafts[idx] || ""}
+              onChange={(e) =>
+                setValueDrafts({
+                  ...valueDrafts,
+                  [idx]: e.target.value,
+                })
+              }
+              onKeyDown={(e) =>
+                e.key === "Enter" && addValueToAttribute(idx)
+              }
+            />
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => addValueToAttribute(idx)}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* ================= VARIANTS ================= */}
+      {generatedCombos.length > 0 && (
+        <div className="mt-3">
+          <h6>Variants Stock</h6>
+
+          <table className="table table-sm">
+            <thead>
+              <tr>
+                {attributes.map((a) => (
+                  <th key={a.name}>{a.name}</th>
+                ))}
+                <th>Qty</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {generatedCombos.map((combo) => (
+                <tr key={JSON.stringify(combo)}>
+                  {attributes.map((a) => (
+                    <td key={a.name}>{combo[a.name]}</td>
+                  ))}
+                  <td>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm"
+                      value={getVariantQty(combo)}
+                      onChange={(e) =>
+                        setVariantQty(combo, Number(e.target.value))
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ACTIONS */}
       <div className="d-flex justify-content-end gap-2 mt-3">
-        <button
-  onClick={() => setShowModal(false)} // or setEditModal(false) etc.
-  style={{
-    position: "absolute",
-    top: 10,
-    right: 10,
-    border: "none",
-    background: "transparent",
-    fontSize: 20,
-    cursor: "pointer",
-  }}
->
-  ×
-</button>
         <button
           className="btn btn-secondary"
           onClick={() => {
@@ -715,313 +878,300 @@ const { showToast } = useToast();
         </button>
 
         <button className="btn btn-primary" onClick={updateProduct}>
-          Save
+          Save 
         </button>
       </div>
     </div>
   </div>
 )}
           {/* ================= MODAL ================= */}
-          {showModal && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.5)",
-                zIndex: 99999,
+        {showModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 99999,
+    }}
+  >
+    <div
+      className="bg-white p-4 rounded"
+      style={{
+        width: 650,
+        maxHeight: "90vh",
+        overflowY: "auto",
+        position: "relative",
+        zIndex: 100000,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* CLOSE */}
+      <button
+        onClick={() => {
+          resetNewProduct();
+          setShowModal(false);
+        }}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          border: "none",
+          background: "transparent",
+          fontSize: 20,
+          cursor: "pointer",
+        }}
+      >
+        ×
+      </button>
 
-              }}
+      <h5>Add Product</h5>
+
+      {/* NAME */}
+      <input
+        className="form-control my-2"
+        placeholder="Name"
+        value={newProduct.name}
+        onChange={(e) =>
+          setNewProduct({ ...newProduct, name: e.target.value })
+        }
+      />
+
+      {/* DESCRIPTION */}
+      <input
+        className="form-control my-2"
+        placeholder="Description"
+        value={newProduct.description}
+        onChange={(e) =>
+          setNewProduct({ ...newProduct, description: e.target.value })
+        }
+      />
+
+      {/* BRAND */}
+      <select
+        className="form-control my-2"
+        value={newProduct.brand_id}
+        onChange={(e) =>
+          setNewProduct({
+            ...newProduct,
+            brand_id: Number(e.target.value),
+          })
+        }
+      >
+        <option value="">Select Brand</option>
+        {brands.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.name}
+          </option>
+        ))}
+      </select>
+
+      {/* CATEGORY */}
+      <select
+        className="form-control my-2"
+        value={newProduct.category_id}
+        onChange={(e) =>
+          setNewProduct({
+            ...newProduct,
+            category_id: Number(e.target.value),
+          })
+        }
+      >
+        <option value="">Select Category</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+
+      {/* IMAGE */}
+      <input
+        type="file"
+        className="form-control my-2"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          setNewProduct({
+            ...newProduct,
+            image: file || null,
+          });
+        }}
+      />
+
+      {/* PRICES */}
+      <input
+        type="number"
+        className="form-control my-2"
+        placeholder="Purchase Price"
+        value={newProduct.purchase_price || ""}
+        onChange={(e) =>
+          setNewProduct({
+            ...newProduct,
+            purchase_price: Number(e.target.value),
+          })
+        }
+      />
+
+      <input
+        type="number"
+        className="form-control my-2"
+        placeholder="Sale Price"
+        value={newProduct.sale_price || ""}
+        onChange={(e) =>
+          setNewProduct({
+            ...newProduct,
+            sale_price: Number(e.target.value),
+          })
+        }
+      />
+
+      {/* STOCK */}
+      <div className="form-check my-2">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          checked={newProduct.in_stock}
+          onChange={(e) =>
+            setNewProduct({
+              ...newProduct,
+              in_stock: e.target.checked,
+            })
+          }
+        />
+        <label>In Stock</label>
+      </div>
+
+      {/* ================= ATTRIBUTES ================= */}
+      <hr />
+      <h6>Attributes (Variants)</h6>
+
+      {/* ADD ATTRIBUTE */}
+      <div className="d-flex gap-2 mb-2">
+        <input
+          className="form-control"
+          placeholder="Attribute name (Color, Storage...)"
+          value={newAttrName}
+          onChange={(e) => setNewAttrName(e.target.value)}
+        />
+        <button className="btn btn-outline-primary" onClick={addAttribute}>
+          + Add
+        </button>
+      </div>
+
+      {/* ATTRIBUTE LIST */}
+      {attributes.map((attr, idx) => (
+        <div key={idx} className="border p-2 mb-2 rounded bg-light">
+          <div className="d-flex justify-content-between">
+            <strong>{attr.name}</strong>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={() => removeAttribute(idx)}
             >
-              <div className="bg-white p-4 rounded" style={{ width: 600, maxHeight: "90vh", overflowY: "auto" ,   position: "relative",
-          zIndex: 100000,}}>
+              Remove
+            </button>
+          </div>
 
-                <h5>Add Product</h5>
-
-                <input
-                  className="form-control my-2"
-                  placeholder="Name"
-                  value={newProduct.name}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, name: e.target.value })
-                  }
-                />
-
-                <input
-                  className="form-control my-2"
-                  placeholder="Description"
-                  value={newProduct.description}
-                  onChange={(e) =>
-                    setNewProduct({ ...newProduct, description: e.target.value })
-                  }
-                />
-
-                <select
-                  className="form-control my-2"
-                  value={newProduct.brand_id}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      brand_id: Number(e.target.value),
-                    })
-                  }
+          {/* VALUES */}
+          <div className="d-flex flex-wrap gap-2 mt-2">
+            {attr.values.map((v) => (
+              <span
+                key={v}
+                className="badge bg-secondary d-flex align-items-center gap-1"
+              >
+                {v}
+                <span
+                  style={{ cursor: "pointer" }}
+                  onClick={() => removeValueFromAttribute(idx, v)}
                 >
-                  <option value="">Select Brand</option>
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
+                  ×
+                </span>
+              </span>
+            ))}
+          </div>
 
-                <select
-                  className="form-control my-2"
-                  value={newProduct.category_id}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      category_id: Number(e.target.value),
-                    })
-                  }
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+          {/* ADD VALUE */}
+          <div className="d-flex gap-2 mt-2">
+            <input
+              className="form-control form-control-sm"
+              placeholder="Add value"
+              value={valueDrafts[idx] || ""}
+              onChange={(e) =>
+                setValueDrafts({
+                  ...valueDrafts,
+                  [idx]: e.target.value,
+                })
+              }
+              onKeyDown={(e) =>
+                e.key === "Enter" && addValueToAttribute(idx)
+              }
+            />
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => addValueToAttribute(idx)}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      ))}
 
-                <input
-                  type="file"
-                  className="form-control my-2"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    setNewProduct({
-                      ...newProduct,
-                      image: file || null,
-                    });
-                  }}
-                />
+      {/* ================= VARIANTS ================= */}
+      {generatedCombos.length > 0 && (
+        <div className="mt-3">
+          <h6>Variants Stock</h6>
 
-                <input
-                  type="number"
-                  className="form-control my-2"
-                  placeholder="Purchase Price"
-                  value={newProduct.purchase_price || ""}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      purchase_price: Number(e.target.value),
-                    })
-                  }
-                />
-
-                <input
-                  type="number"
-                  className="form-control my-2"
-                  placeholder="Sale Price"
-                  value={newProduct.sale_price || ""}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      sale_price: Number(e.target.value),
-                    })
-                  }
-                />
-
-                <div className="form-check my-2">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    checked={newProduct.in_stock}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        in_stock: e.target.checked,
-                      })
-                    }
-                  />
-                  <label>In Stock</label>
-                </div>
-
-                {/* ================= DYNAMIC VARIANT ATTRIBUTES ================= */}
-                <hr className="my-3" />
-                <h6>Variant attributes</h6>
-                <small className="text-muted d-block mb-2">
-                  Add as many attribute types and values as this product needs
-                  — e.g. Color: Red, Blue, Black. Storage: 64GB, 128GB, 256GB.
-                </small>
-
-                {/* ADD NEW ATTRIBUTE */}
-                <div className="d-flex gap-2 mb-3">
-                  <input
-                    className="form-control"
-                    placeholder="Attribute name (e.g. Color, Storage)"
-                    value={newAttrName}
-                    onChange={(e) => setNewAttrName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addAttribute()}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary"
-                    onClick={addAttribute}
-                  >
-                    + Attribute
-                  </button>
-                </div>
-
-                {/* EXISTING ATTRIBUTES */}
-                {attributes.map((attr, idx) => (
-                  <div
-                    key={attr.name}
-                    className="border rounded p-2 mb-2"
-                    style={{ background: "#f8f9fa" }}
-                  >
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <strong>{attr.name}</strong>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-danger"
-                        onClick={() => removeAttribute(idx)}
-                      >
-                        Remove attribute
-                      </button>
-                    </div>
-
-                    <div className="d-flex flex-wrap gap-2 mb-2">
-                      {attr.values.map((v) => (
-                        <span
-                          key={v}
-                          className="badge bg-light text-dark border d-flex align-items-center gap-1"
-                          style={{ fontSize: 13, padding: "6px 10px" }}
-                        >
-                          {v}
-                          <span
-                            role="button"
-                            onClick={() => removeValueFromAttribute(idx, v)}
-                            style={{ cursor: "pointer", fontWeight: "bold" }}
-                          >
-                            ×
-                          </span>
-                        </span>
-                      ))}
-                      {attr.values.length === 0 && (
-                        <small className="text-muted">No values yet</small>
-                      )}
-                    </div>
-
-                    <div className="d-flex gap-2">
-                      <input
-                        className="form-control form-control-sm"
-                        placeholder={`Add a ${attr.name.toLowerCase()} value...`}
-                        value={valueDrafts[idx] || ""}
-                        onChange={(e) =>
-                          setValueDrafts((prev) => ({ ...prev, [idx]: e.target.value }))
-                        }
-                        onKeyDown={(e) => e.key === "Enter" && addValueToAttribute(idx)}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => addValueToAttribute(idx)}
-                      >
-                        Add value
-                      </button>
-                    </div>
-                  </div>
+          <table className="table table-sm">
+            <thead>
+              <tr>
+                {attributes.map((a) => (
+                  <th key={a.name}>{a.name}</th>
                 ))}
+                <th>Qty</th>
+              </tr>
+            </thead>
 
-                {/* ================= GENERATED VARIANT COMBINATIONS ================= */}
-                {generatedCombos.length > 0 && (
-                  <div className="mt-3">
-                    <label className="fw-bold">
-                      Variant quantities ({generatedCombos.length} combinations)
-                    </label>
-                    <div
-                      className="border rounded mt-1"
-                      style={{ maxHeight: 260, overflowY: "auto" }}
-                    >
-                      <table className="table table-sm mb-0">
-                        <thead>
-                          <tr>
-                            {attributes.map((a) => (
-                              <th key={a.name}>{a.name}</th>
-                            ))}
-                            <th style={{ width: 100 }}>Qty</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {generatedCombos.map((combo) => (
-                            <tr key={JSON.stringify(combo)}>
-                              {attributes.map((a) => (
-                                <td key={a.name}>{combo[a.name]}</td>
-                              ))}
-                              <td>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  className="form-control form-control-sm"
-                                  placeholder="0"
-                                  value={getVariantQty(combo)}
-                                  onChange={(e) =>
-                                    setVariantQty(combo, Number(e.target.value))
-                                  }
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+            <tbody>
+              {generatedCombos.map((combo) => (
+                <tr key={JSON.stringify(combo)}>
+                  {attributes.map((a) => (
+                    <td key={a.name}>{combo[a.name]}</td>
+                  ))}
+                  <td>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm"
+                      value={getVariantQty(combo)}
+                      onChange={(e) =>
+                        setVariantQty(combo, Number(e.target.value))
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-                {attributes.length > 0 &&
-                  attributes.some((a) => a.values.length === 0) && (
-                    <small className="text-warning d-block mt-2">
-                      Add at least one value to every attribute to generate variant
-                      combinations.
-                    </small>
-                  )}
+      {/* ACTIONS */}
+      <div className="d-flex justify-content-end gap-2 mt-3">
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            resetNewProduct();
+            setShowModal(false);
+          }}
+        >
+          Cancel
+        </button>
 
-                <div className="d-flex justify-content-end gap-2 mt-3">
-                  <button
-  onClick={() => setShowModal(false)} // or setEditModal(false) etc.
-  style={{
-    position: "absolute",
-    top: 10,
-    right: 10,
-    border: "none",
-    background: "transparent",
-    fontSize: 20,
-    cursor: "pointer",
-  }}
->
-  ×
-</button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      resetNewProduct();
-                      setShowModal(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    className="btn btn-primary"
-                    onClick={addProduct}
-                  >
-                    Save
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          )}
-
+        <button className="btn btn-primary" onClick={addProduct}>
+          Save 
+        </button>
+      </div>
+    </div>
+  </div>
+)}
           {/* ================= PAGINATION ================= */}
           <div className="d-flex justify-content-center mt-3 gap-2">
             <button
@@ -1046,58 +1196,68 @@ const { showToast } = useToast();
           </div>
 
           {/* ================= DELETE MODAL ================= */}
-          {deleteModal && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.5)",
-                zIndex: 9999,
-              }}
-            >
-              <div ref={addModalRef} className="bg-white p-4 rounded shadow" style={{ width: 350 }}>
+       {deleteModal && (
+  <div
+    className="d-flex align-items-center justify-content-center"
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 99999,
+    }}
+    onClick={() => setDeleteModal(null)} // 👈 CLICK OUTSIDE CLOSE
+  >
+    <div
+      className="bg-white p-4 rounded shadow"
+      style={{
+        width: 350,
+        position: "relative",
+      }}
+      onClick={(e) => e.stopPropagation()} // 👈 BLOCK OUTSIDE CLICK
+    >
+      {/* X BUTTON */}
+      <button
+        onClick={() => setDeleteModal(null)}
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 12,
+          border: "none",
+          background: "transparent",
+          fontSize: 20,
+          cursor: "pointer",
+        }}
+      >
+        ×
+      </button>
 
-                <h5>Confirm Delete</h5>
+      <h5>Confirm Delete</h5>
 
-                <p>Are you sure you want to delete this product?</p>
+      <p className="text-muted">
+        Are you sure you want to delete this product?
+      </p>
 
-                <div className="d-flex justify-content-end gap-2">
-<button
-  onClick={() => setShowModal(false)} // or setEditModal(false) etc.
-  style={{
-    position: "absolute",
-    top: 10,
-    right: 10,
-    border: "none",
-    background: "transparent",
-    fontSize: 20,
-    cursor: "pointer",
-  }}
->
-  ×
-</button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setDeleteModal(null)}
-                  >
-                    Cancel
-                  </button>
+      <div className="d-flex justify-content-end gap-2">
+        <button
+          className="btn btn-secondary"
+          onClick={() => setDeleteModal(null)}
+        >
+          Cancel
+        </button>
 
-                  <button
-                    className="btn btn-danger"
-                    onClick={async () => {
-                      await deleteProduct(deleteModal);
-                      setDeleteModal(null);
-                    }}
-                  >
-                    Delete
-                  </button>
-
-                </div>
-              </div>
-            </div>
-          )}
+        <button
+          className="btn btn-danger"
+          onClick={async () => {
+            await deleteProduct(deleteModal);
+            setDeleteModal(null);
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         </div>
       </div>

@@ -3,7 +3,7 @@ import api from "../../../api/axios";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import { FaTrash, FaChevronLeft, FaChevronRight } from "react-icons/fa";
-
+import { useToast } from "../../../componets/common/ToastContext";
 type User = {
   id: number;
   name: string;
@@ -14,6 +14,7 @@ type User = {
 };
 
 const Users: React.FC = () => {
+  const { showToast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [page, setPage] = useState(1);
 const [deleteUser, setDeleteUser] = useState<User | null>(null);
@@ -23,23 +24,28 @@ const [deleteUser, setDeleteUser] = useState<User | null>(null);
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await api.get("/users/admin");
-      setUsers(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+const fetchUsers = async () => {
+  try {
+    const res = await api.get("/users/admin");
+    setUsers(res.data);
+  } catch (err) {
+    console.log(err);
+    showToast("Failed to load users", "error");
+  }
+};
 
   const handleDelete = async (id: number) => {
-    try {
-      await api.delete(`/users/${id}`);
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  try {
+    await api.delete(`/users/${id}`);
+
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+
+    showToast("User deleted successfully", "success");
+  } catch (err) {
+    console.log(err);
+    showToast("Failed to delete user", "error");
+  }
+};
 
   // remove admin
   const filtered = users.filter((u) => u.role !== "admin");
@@ -138,10 +144,10 @@ const [deleteUser, setDeleteUser] = useState<User | null>(null);
 
         <button
           className="btn btn-danger"
-          onClick={async () => {
-            await handleDelete(deleteUser.id);
-            setDeleteUser(null);
-          }}
+        onClick={async () => {
+  await handleDelete(deleteUser.id);
+  setDeleteUser(null);
+}}
         >
           Delete
         </button>

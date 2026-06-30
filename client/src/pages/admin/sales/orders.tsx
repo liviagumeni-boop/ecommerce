@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import api from "../../../api/axios";
-
+import { useToast } from "../../../componets/common/ToastContext";
 /* ================= TYPES ================= */
 type Order = {
   id: number;
@@ -14,6 +14,7 @@ type Order = {
 };
 
 const Orders: React.FC = () => {
+  const { showToast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
@@ -30,29 +31,26 @@ const Orders: React.FC = () => {
   const itemsPerPage = 10;
 
   /* ================= FETCH ================= */
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await api.get("/orders");
-        setOrders(res.data);
-      } catch (err) {
-        console.log(err);
-      }
-    };
+ useEffect(() => {
+  const fetchOrders = async () => {
+    try {
+      const res = await api.get("/orders");
+      setOrders(res.data);
+    } catch (err) {
+      console.log(err);
+      showToast("Failed to load orders", "error");
+    }
+  };
 
-    fetchOrders();
-  }, []);
+  fetchOrders();
+}, []);
 
   /* ================= MARK DELIVERED ================= */
 const markDelivered = async (id: number) => {
   try {
-    console.log("MARKING DELIVERED:", id);
-
     const res = await api.patch(`/orders/${id}`, {
       status: "delivered",
     });
-
-    console.log("RESPONSE:", res.data);
 
     setOrders((prev) =>
       prev.map((o) =>
@@ -61,8 +59,11 @@ const markDelivered = async (id: number) => {
     );
 
     setSelectedOrder(null);
+
+    showToast("Order marked as delivered", "success");
   } catch (err: any) {
-    console.log("ERROR MARK DELIVERED:", err?.response?.data || err);
+    console.log(err?.response?.data || err);
+    showToast("Failed to update order", "error");
   }
 };
 
@@ -157,16 +158,18 @@ const markDelivered = async (id: number) => {
   <option value="delivered">Delivered</option>
 </select>
             {/* RESET */}
-            <button
+       <button
   className="btn btn-outline-secondary"
-  onClick={() =>
+  onClick={() => {
     setFilters({
       searchId: "",
       searchName: "",
       date: "",
       status: "",
-    })
-  }
+    });
+
+    showToast("Filters reset", "info");
+  }}
 >
   Reset
 </button>
