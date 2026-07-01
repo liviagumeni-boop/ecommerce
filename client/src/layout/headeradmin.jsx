@@ -9,15 +9,16 @@ function AdminHeader() {
   const navigate = useNavigate();
 
   // 👉 TITULLI I FAQES
-  const pageTitles = {
-    "/admin": "Dashboard",
-    "/admin/products": "Products",
-    "/admin/categories": "Categories",
-    "/admin/orders": "Sales",
-    "/admin/customers/users": "Users",
-    "/admin/settings": "Settings",
-  };
-
+ const pageTitles = {
+  "/admin": "Dashboard",
+  "/admin/products": "Products",
+  "/admin/categories": "Categories",
+  "/admin/products/enter": "Enter ",
+  "/admin/sales/exit": "Exit ",
+  "/admin/orders": "Sales",
+  "/admin/customers/users": "Customers",
+  "/admin/settings": "Settings",
+};
   const currentPage =
     pageTitles[location.pathname] || "Dashboard";
 

@@ -42,7 +42,9 @@ const couponsRoutes = require("./src/router/coupons.routes");
 const ordersRoutes = require("./src/router/order.routes");
 const adminRoutes = require("./src/router/admin.routes");
 const storeRoutes = require("./src/router/store.routes");
+const stockEntryRoutes = require("./src/router/entries.routes");
 
+app.use("/api", stockEntryRoutes);
 app.use("/api/store-settings", storeRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orders", ordersRoutes);
