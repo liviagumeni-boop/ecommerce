@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import api from "../../../api/axios";
 
 import Sidebar from "../../../layout/sidebar";
@@ -36,31 +36,37 @@ type DashboardData = {
   users: User[];
   outOfStock: number;
 };
-
+let dashboardCache: DashboardData | null = null;
 export default function AdminHome() {
-
+const hasLoadedOnce = useRef(false);
   // ================= STATE =================
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+const [dashboard, setDashboard] = useState<DashboardData | null>(
+  dashboardCache
+);
+const [loading, setLoading] = useState(!dashboardCache);
+const hasFetched = useRef(false);
+useEffect(() => {
+  if (dashboardCache) return;
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await api.get<DashboardData>("/admin/dashboard");
-        setDashboard(res.data);
-      } catch (err) {
-        console.error("Dashboard error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchDashboard = async () => {
+    try {
+      const res = await api.get<DashboardData>("/admin/dashboard");
 
-    fetchDashboard();
-  }, []);
+      dashboardCache = res.data; // 👈 store globally
+      setDashboard(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (loading || !dashboard) {
-    return <div className="p-4">Loading...</div>;
-  }
+  fetchDashboard();
+}, []);
+
+if (loading || !dashboard) {
+  return <div className="p-4">Loading...</div>;
+}
 
   // ================= FINANCE =================
   const finance = {
