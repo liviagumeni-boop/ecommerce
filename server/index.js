@@ -43,7 +43,9 @@ const ordersRoutes = require("./src/router/order.routes");
 const adminRoutes = require("./src/router/admin.routes");
 const storeRoutes = require("./src/router/store.routes");
 const stockEntryRoutes = require("./src/router/entries.routes");
+const exitRoutes = require("./src/router/exit.routes");
 
+app.use("/api", exitRoutes);
 app.use("/api", stockEntryRoutes);
 app.use("/api/store-settings", storeRoutes);
 app.use("/api/admin", adminRoutes);
