@@ -4,6 +4,7 @@ import { FcGoogle } from "react-icons/fc";
 
 import { loginUser } from "../../../api/login";
 import { useToast } from "../../../componets/common/ToastContext";
+import { useCart } from "../../../componets/common/Cartcontext.jsx";// adjust path to your actual file
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,6 +12,7 @@ export default function Login() {
 
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { mergeGuestCartWithUser } = useCart();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -18,9 +20,6 @@ export default function Login() {
     try {
       const { token, user } = await loginUser(email, password);
 
-      console.log("LOGIN RESPONSE:", { token, user });
-
-      // clear old data
       localStorage.removeItem("adminToken");
       localStorage.removeItem("admin");
       localStorage.removeItem("userToken");
@@ -28,28 +27,25 @@ export default function Login() {
       localStorage.removeItem("token");
       localStorage.removeItem("role");
 
-      // normalize role
       const role = (user?.role || "").toLowerCase().trim();
 
-      // IMPORTANT: store exactly what AdminRoute expects
       localStorage.setItem("adminToken", token);
       localStorage.setItem("admin", JSON.stringify({ ...user, role }));
-
-      // optional global storage
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("user", JSON.stringify(user));
 
+      // Merge the guest cart into this user's cart NOW, before navigating
+      mergeGuestCartWithUser(user?._id || user?.id);
+
       window.dispatchEvent(new Event("authChanged"));
 
-      // navigation
       if (role === "admin") {
         navigate("/admin", { replace: true });
       } else {
         navigate("/", { replace: true });
       }
     } catch (err) {
-      console.log("LOGIN ERROR:", err);
       showToast("Email or password is incorrect", "error");
     }
   };
