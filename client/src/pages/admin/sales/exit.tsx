@@ -515,50 +515,91 @@ const Exits: React.FC = () => {
   };
 
   /* ================= DOWNLOAD SELECTED ================= */
-  const downloadSelected = async () => {
-    if (selectedExits.size === 0) {
-      showToast("Select at least one exit to download", "warning" as any);
+const downloadSelected = async () => {
+  if (selectedExits.size === 0) {
+    showToast("Select at least one exit to download", "warning" as any);
+    return;
+  }
+
+  try {
+    const ids = Array.from(selectedExits);
+
+    // 1. fetch full modal-style details (same as Eye modal)
+    const responses = await Promise.all(
+      ids.map((id) => api.get(`/stock-exits/${id}`))
+    );
+
+    const exits: ExitDetail[] = responses.map((r) => r.data);
+
+    // 2. flatten into CSV rows (same structure as modal table)
+    const rows: any[] = [];
+
+    exits.forEach((exit) => {
+      exit.items.forEach((item) => {
+        rows.push({
+          ExitID: exit.id,
+          Date: new Date(exit.created_at).toLocaleString(),
+
+          Type: exit.exit_type,
+          Party: exit.party_name,
+          PartyId:
+            exit.party_type && exit.party_id
+              ? `${exit.party_type === "customer" ? "C" : "S"}${String(
+                  exit.party_id
+                ).padStart(6, "0")}`
+              : "",
+
+          Contact: exit.contact || "",
+          LinkedRecord: exit.party_table_name || "",
+          ContactPerson: exit.party_contact_name || "",
+          Phone: exit.party_phone || "",
+          Email: exit.party_email || "",
+          Address: exit.party_address || "",
+
+          Product: item.product_name,
+          Variant: item.size || item.color || item.memory
+            ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
+            : "",
+
+          Quantity: item.quantity,
+          UnitPrice: item.unit_price,
+          LineTotal: item.unit_price * item.quantity,
+        });
+      });
+    });
+
+    // 3. CSV build
+    if (rows.length === 0) {
+      showToast("Nothing to export", "warning" as any);
       return;
     }
 
-    try {
-      const ids = Array.from(selectedExits);
+    const headers = Object.keys(rows[0]);
 
-      const res = await api.post(
-        "/stock-exits/export",
-        {
-          ids,
-          startDate: startDate || null,
-          endDate: endDate || null,
-          product: productSearch || null,
-          party: partySearch || null,
-          type: typeFilter === "all" ? null : typeFilter,
-        },
-        { responseType: "blob" }
-      );
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) =>
+        headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
+      ),
+    ].join("\n");
 
-      const contentType = res.headers?.["content-type"]?.toString?.() || "text/csv";
-      const blob = new Blob([res.data], { type: contentType });
+    // 4. download file
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
 
-      // Prefer the filename the server suggests, if any.
-      const disposition = res.headers?.["content-disposition"]?.toString?.() || "";
-      const match = disposition.match(/filename="?([^";]+)"?/i);
-      const filename = match?.[1] || "stock-exits.csv";
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "stock-exits-detailed.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
 
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.log(err);
-      showToast("Failed to download", "error" as any);
-    }
-  };
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.log(err);
+    showToast("Failed to download detailed export", "error" as any);
+  }
+};
 
   return (
     <div className="d-flex">
@@ -844,58 +885,67 @@ const Exits: React.FC = () => {
             
 
                 {/* PARTY SELECT — shows every customer / supplier, not just search matches */}
-              <select
-  className="form-control mb-3"
-  value={exitType}
-  onChange={(e) => switchExitType(e.target.value as ExitType)}
->
-  <option value="sale">Sale (Customer)</option>
-  <option value="return">Return to Supplier</option>
-</select>
-                {/* PARTY SEARCH */}
-                <div style={{ position: "relative" }}>
-                  <input
-                    className="form-control my-2"
-                    placeholder={
-                      exitType === "sale"
-                        ? "Search existing customer "
-                        : "Search existing supplier "
-                    }
-                    value={partyQuery}
-                    onChange={(e) => {
-                      setPartyQuery(e.target.value);
-                      setPartyName(e.target.value);
-                      setPartyId(null);
-                    }}
-                    onFocus={() => partyResults.length > 0 && setShowPartyResults(true)}
-                  />
-                  {showPartyResults && partyResults.length > 0 && (
-                    <div
-                      className="border rounded bg-white shadow-sm"
-                      style={{ position: "absolute", zIndex: 5, width: "100%", maxHeight: 180, overflowY: "auto" }}
-                    >
-                      {partyResults.map((p) => (
-                        <div
-                          key={p.id}
-                          className="p-2"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => pickParty(p)}
-                        >
-                          <strong>{p.name}</strong>{" "}
-                          <span className="text-muted small">{p.phone || p.email}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
 
-                <input
-                  className="form-control my-2"
-                  placeholder="Contact (phone / email)"
-                  value={partyContact}
-                  onChange={(e) => setPartyContact(e.target.value)}
-                />
+  {/* LEFT */}
+  <div style={{ flex: 1 }}>
+    <select
+      className="form-control"
+      value={exitType}
+      onChange={(e) => switchExitType(e.target.value as ExitType)}
+    >
+      <option value="sale">Sale (Customer)</option>
+      <option value="return">Return to Supplier</option>
+    </select>
+  </div>
 
+  {/* RIGHT */}
+  <div style={{ flex: 1, position: "relative" }}>
+    <input
+      className="form-control"
+      placeholder={
+        exitType === "sale"
+          ? "Search existing customer"
+          : "Search existing supplier"
+      }
+      value={partyQuery}
+      onChange={(e) => {
+        setPartyQuery(e.target.value);
+        setPartyName(e.target.value);
+        setPartyId(null);
+      }}
+      onFocus={() =>
+        partyResults.length > 0 && setShowPartyResults(true)
+      }
+    />
+
+    {showPartyResults && partyResults.length > 0 && (
+      <div
+        className="border rounded bg-white shadow-sm"
+        style={{
+          position: "absolute",
+          zIndex: 5,
+          width: "100%",
+          maxHeight: 180,
+          overflowY: "auto",
+        }}
+      >
+        {partyResults.map((p) => (
+          <div
+            key={p.id}
+            className="p-2"
+            style={{ cursor: "pointer" }}
+            onClick={() => pickParty(p)}
+          >
+            <strong>{p.name}</strong>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+</div>
+              
                 <hr />
 
                 <div className="d-flex justify-content-between align-items-center mb-3">

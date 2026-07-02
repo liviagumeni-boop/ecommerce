@@ -610,25 +610,57 @@ const downloadSelected = async () => {
   try {
     const ids = Array.from(selectedBills);
 
-    const res = await api.post(
-      "/stock-entries/export",
-      {
-        ids,
-        startDate: startDate || null,
-endDate: endDate || null,
-        search: listSearch || null,
-      },
-      {
-        responseType: "blob", // IMPORTANT
-      }
+    if (ids.length === 0) {
+      showToast("No bills selected", "warning" as any);
+      return;
+    }
+
+    // fetch full details for each bill (same as eye modal)
+    const responses = await Promise.all(
+      ids.map((id) => api.get(`/stock-entries/${id}`))
     );
 
-    const blob = new Blob([res.data], { type: "text/csv" });
+    const bills: BillDetail[] = responses.map((r) => r.data);
+
+    // flatten into richer CSV rows (matching modal data)
+    const rows: any[] = [];
+
+    bills.forEach((bill) => {
+      bill.items.forEach((item) => {
+        rows.push({
+          BillID: bill.id,
+          Date: new Date(bill.created_at).toLocaleString(),
+          Supplier: bill.supplier_name,
+          Contact: bill.contact || "",
+          LinkedSupplier: bill.supplier_table_name || "",
+          SupplierContactPerson: bill.supplier_contact_name || "",
+          SupplierPhone: bill.supplier_phone || "",
+          SupplierEmail: bill.supplier_email || "",
+          SupplierAddress: bill.supplier_address || "",
+          Product: item.product_name,
+          Variant: item.size || item.color || item.memory
+            ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
+            : "",
+          Quantity: item.quantity,
+        });
+      });
+    });
+
+    // convert to CSV
+    const headers = Object.keys(rows[0] || {});
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) =>
+        headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
 
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "stock-entries.csv";
+    a.download = "stock-entries-detailed.csv";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -636,7 +668,7 @@ endDate: endDate || null,
     window.URL.revokeObjectURL(url);
   } catch (err) {
     console.log(err);
-    showToast("Failed to download", "error" as any);
+    showToast("Failed to download detailed export", "error" as any);
   }
 };
 useEffect(() => {
@@ -905,19 +937,14 @@ useEffect(() => {
                           onClick={() => pickSupplier(s)}
                         >
                           <strong>{s.name}</strong>{" "}
-                          <span className="text-muted small">{s.phone || s.email}</span>
+                        
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <input
-                  className="form-control my-2"
-                  placeholder="Contact (phone / email)"
-                  value={supplierContact}
-                  onChange={(e) => setSupplierContact(e.target.value)}
-                />
+              
 
                 <hr />
 
