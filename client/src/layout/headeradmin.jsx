@@ -24,9 +24,10 @@ function AdminHeader() {
 
   // 👉 LOGOUT
 const handleLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user"); // if you store user data
-  sessionStorage.clear(); // optional
+  localStorage.removeItem("adminToken");
+  localStorage.removeItem("admin");
+
+  sessionStorage.clear();
 
   navigate("/", { replace: true });
 };

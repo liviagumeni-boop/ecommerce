@@ -8,7 +8,9 @@ interface Props {
 const AdminRoute: React.FC<Props> = ({ children }) => {
   const token = localStorage.getItem("adminToken");
   const admin = localStorage.getItem("admin");
-
+console.log("AdminRoute triggered");
+console.log("token:", token);
+console.log("admin:", admin);
   const parsedAdmin = admin ? JSON.parse(admin) : null;
 
   if (!token) {
@@ -21,5 +23,6 @@ const AdminRoute: React.FC<Props> = ({ children }) => {
 
   return <>{children}</>;
 };
+
 
 export default AdminRoute;
