@@ -27,7 +27,7 @@ import Settings from "./pages/admin/settings/settings";
 import AdminHome from "./pages/admin/home/AdminHome";
 import Orders from "./pages/admin/sales/orders";
 import Users from "./pages/admin/customers/users";
-
+import Exit from "./pages/admin/sales/exit";
 // PROTECTED ROUTE
 import AdminRoute from "./routes/AdminRoute";
 
@@ -156,6 +156,14 @@ function App() {
   element={
     <AdminRoute>
       <Entries />
+    </AdminRoute>
+  }
+/>
+<Route
+  path="/admin/sales/exit"
+  element={
+    <AdminRoute>
+      <Exit />
     </AdminRoute>
   }
 />

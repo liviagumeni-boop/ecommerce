@@ -304,7 +304,7 @@ const updateProduct = async () => {
       
     } catch (err) {
       console.log(err);
-   showToast("Delete faild");
+   showToast("Delete faild" );
     }
   };
 

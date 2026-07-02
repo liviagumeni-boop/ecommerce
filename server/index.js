@@ -30,7 +30,7 @@ app.use(passport.initialize());
 
 // ROUTES
 const paymentRoutes = require("./src/router/payment.routes");
-const userRoutes = require("./src/router/users.routes");
+//const userRoutes = require("./src/router/users.routes");
 const googleRoutes = require("./src/router/google.routes");
 const loginRoutes = require("./src/auth/login");
 const signupRoutes = require("./src/auth/singup");
@@ -44,7 +44,9 @@ const adminRoutes = require("./src/router/admin.routes");
 const storeRoutes = require("./src/router/store.routes");
 const stockEntryRoutes = require("./src/router/entries.routes");
 const exitRoutes = require("./src/router/exit.routes");
+const partiesRoutes = require("./src/router/users.routes");
 
+app.use("/api/parties", partiesRoutes);
 app.use("/api", exitRoutes);
 app.use("/api", stockEntryRoutes);
 app.use("/api/store-settings", storeRoutes);
@@ -55,7 +57,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/api/users", userRoutes);
+//app.use("/api/users", userRoutes);
 app.use("/api/auth", loginRoutes);
 app.use("/api/auth", googleRoutes);
 app.use("/api/categories", categoriesRoutes);

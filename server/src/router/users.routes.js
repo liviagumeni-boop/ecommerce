@@ -3,185 +3,272 @@ const pool = require("../config/db");
 
 const router = express.Router();
 
-/* =========================
-   GET LOGGED USER
-========================= */
-router.get("/me", async (req, res) => {
+/* =========================================================
+   GET ALL (LIST + SEARCH + ROLE + PAGINATION)
+========================================================= */
+router.get("/", async (req, res) => {
   try {
-    const userId = req.headers.userid;
+    const { search, role, page = 1, limit = 12 } = req.query;
 
-    if (!userId) {
-      return res.status(400).json({ message: "Missing user id" });
+    const offset = (page - 1) * limit;
+
+    let baseQuery = `
+      FROM suppliers
+      WHERE 1=1
+    `;
+
+    const values = [];
+    let i = 1;
+
+    // SEARCH
+    if (search) {
+      values.push(`%${search}%`);
+      baseQuery += `
+        AND (
+          name ILIKE $${i} OR
+          phone ILIKE $${i} OR
+          email ILIKE $${i} OR
+          contact_name ILIKE $${i}
+        )
+      `;
+      i++;
     }
 
-    const result = await pool.query(
-      `SELECT id, name, email, address, role, created_at
-       FROM users
-       WHERE id=$1`,
-      [userId]
+    // ROLE FILTER
+    if (role === "customer" || role === "supplier") {
+      values.push(role);
+      baseQuery += ` AND role = $${i}`;
+      i++;
+    }
+
+    // COUNT QUERY
+    const countResult = await pool.query(
+      `SELECT COUNT(*) ${baseQuery}`,
+      values
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const total = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
 
-    res.json(result.rows[0]);
+    // DATA QUERY
+    values.push(limit, offset);
+
+    const dataQuery = `
+      SELECT *
+      ${baseQuery}
+      ORDER BY created_at DESC
+      LIMIT $${i} OFFSET $${i + 1}
+    `;
+
+    const result = await pool.query(dataQuery, values);
+
+    res.json({
+      data: result.rows,
+      total,
+      totalPages,
+      page: parseInt(page),
+    });
+
   } catch (err) {
+    console.error("PARTIES ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-/* =========================
-   GET USER ORDERS
-========================= */
-router.get("/me/orders", async (req, res) => {
+/* =========================================================
+   GET SINGLE
+========================================================= */
+router.get("/:id", async (req, res) => {
   try {
-    const userId = req.headers.userid;
+    const result = await pool.query(
+      `SELECT * FROM suppliers WHERE id = $1`,
+      [req.params.id]
+    );
 
-    if (!userId) {
-      return res.status(400).json({ message: "Missing user id" });
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "Not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* =========================================================
+   CREATE
+========================================================= */
+router.post("/", async (req, res) => {
+  try {
+    const { name, contact_name, phone, email, address, role } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: "Name required" });
+    }
+
+    if (!["customer", "supplier"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
     }
 
     const result = await pool.query(
-      `SELECT 
-        id,
-        total,
-        status,
-        created_at
-       FROM orders
-       WHERE user_id = $1
-       ORDER BY created_at DESC`,
-      [userId]
+      `
+      INSERT INTO suppliers
+      (name, contact_name, phone, email, address, role)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      RETURNING *
+      `,
+      [name, contact_name, phone, email, address, role]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* =========================================================
+   UPDATE
+========================================================= */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, contact_name, phone, email, address, role } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE suppliers
+      SET
+        name=$1,
+        contact_name=$2,
+        phone=$3,
+        email=$4,
+        address=$5,
+        role=$6
+      WHERE id=$7
+      RETURNING *
+      `,
+      [name, contact_name, phone, email, address, role, req.params.id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "Not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* =========================================================
+   DELETE
+========================================================= */
+router.delete("/:id", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM suppliers WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ message: "Not found" });
+    }
+
+    res.json({ message: "Deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* =========================================================
+   SEARCH (autocomplete)
+========================================================= */
+router.get("/search", async (req, res) => {
+  try {
+    const q = `%${req.query.q || ""}%`;
+
+    const result = await pool.query(
+      `
+      SELECT id, name, phone, email, role
+      FROM suppliers
+      WHERE
+        name ILIKE $1 OR
+        phone ILIKE $1 OR
+        email ILIKE $1
+      ORDER BY name ASC
+      LIMIT 20
+      `,
+      [q]
     );
 
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
-
-/* =========================
-   UPDATE PROFILE
-========================= */
-router.put("/me", async (req, res) => {
+router.post("/export", async (req, res) => {
   try {
-    const userId = req.headers.userid;
-    const { name, email, address } = req.body;
+    const { ids, search, role } = req.body;
 
-    const result = await pool.query(
-      `UPDATE users
-       SET name=$1, email=$2, address=$3
-       WHERE id=$4
-       RETURNING id, name, email, address`,
-      [name, email, address, userId]
-    );
+    let query = `
+      SELECT id, name, contact_name, phone, email, address, role, created_at
+      FROM suppliers
+      WHERE 1=1
+    `;
 
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+    const values = [];
+    let i = 1;
 
-/* =========================
-   UPDATE ADDRESS ONLY
-========================= */
-router.put("/me/address", async (req, res) => {
-  try {
-    const userId = req.headers.userid;
-    const { address } = req.body;
-
-    const result = await pool.query(
-      `UPDATE users
-       SET address=$1
-       WHERE id=$2
-       RETURNING id, name, email, address`,
-      [address, userId]
-    );
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-/* =========================
-   CHANGE PASSWORD
-========================= */
-router.put("/me/password", async (req, res) => {
-  try {
-    const userId = req.headers.userid;
-    const { old, new: newPass } = req.body;
-
-    const user = await pool.query(
-      "SELECT password FROM users WHERE id=$1",
-      [userId]
-    );
-
-    if (!user.rows[0]) {
-      return res.status(404).json({ message: "User not found" });
+    // filter by selected IDs
+    if (ids && ids.length > 0) {
+      const placeholders = ids.map((_, idx) => `$${idx + 1}`).join(",");
+      query += ` AND id IN (${placeholders})`;
+      values.push(...ids);
+      i = ids.length + 1;
     }
 
-    if (user.rows[0].password !== old) {
-      return res.status(400).json({ message: "Old password incorrect" });
+    // optional search
+    if (search) {
+      values.push(`%${search}%`);
+      query += ` AND (
+        name ILIKE $${i} OR
+        phone ILIKE $${i} OR
+        email ILIKE $${i}
+      )`;
+      i++;
     }
 
-    await pool.query(
-      "UPDATE users SET password=$1 WHERE id=$2",
-      [newPass, userId]
-    );
+    // optional role
+    if (role) {
+      values.push(role);
+      query += ` AND role = $${i}`;
+      i++;
+    }
 
-    res.json({ message: "Password updated" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-router.get("/admin", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        u.id,
-        u.name,
-        u.email,
-        u.role,
-        COUNT(o.id) AS orders_count
-      FROM users u
-      LEFT JOIN orders o ON o.user_id = u.id
-      GROUP BY u.id
-      ORDER BY u.id DESC
-    `);
+    query += ` ORDER BY created_at DESC`;
 
-    const users = result.rows.map((u) => {
-      const orders = Number(u.orders_count || 0);
+    const result = await pool.query(query, values);
 
-      let loyalty = orders * 20;
-      if (loyalty > 100) loyalty = 100;
+    // CSV BUILD
+    const rows = result.rows;
 
-      return {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        orders,
-        loyalty,
-      };
+    let csv = "ID,Name,Contact,Phone,Email,Address,Role,Created At\n";
+
+    rows.forEach(r => {
+      csv += `"${r.id}","${r.name}","${r.contact_name || ""}","${r.phone || ""}","${r.email || ""}","${r.address || ""}","${r.role}","${r.created_at}"\n`;
     });
 
-    res.json(users);
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: err.message });
-  }
-});
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=parties.csv");
 
-    await pool.query("DELETE FROM orders WHERE user_id = $1", [id]);
-    await pool.query("DELETE FROM users WHERE id = $1", [id]);
+    res.send(csv);
 
-    res.json({ message: "User deleted successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("EXPORT ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 });

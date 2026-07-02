@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
-
+import DateRangeFilter from "../../../componets/common/datarange";
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
 import { FaEye, FaTrash, FaPlus, FaChevronDown, FaChevronRight } from "react-icons/fa";
@@ -664,29 +664,15 @@ useEffect(() => {
                 setPage(1);
               }}
             />
-            <input
-    type="date"
-    className="form-control"
-    style={{ maxWidth: 180 }}
-    value={startDate}
-    onChange={(e) => {
-      setStartDate(e.target.value);
-      setPage(1);
-    }}
-  />
-
-  <span>to</span>
-
-  <input
-    type="date"
-    className="form-control"
-    style={{ maxWidth: 180 }}
-    value={endDate}
-    onChange={(e) => {
-      setEndDate(e.target.value);
-      setPage(1);
-    }}
-  />
+   <DateRangeFilter
+     startDate={startDate}
+     endDate={endDate}
+     onChange={(start: string, end: string) => {
+       setStartDate(start);
+       setEndDate(end);
+       setPage(1);
+     }}
+   />
 
   {(startDate || endDate) && (
     <button

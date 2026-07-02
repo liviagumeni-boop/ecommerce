@@ -33,7 +33,7 @@ FROM stock_exit_bills b
 JOIN stock_exit_entries se ON se.bill_id = b.id
 JOIN products p ON p.id = se.product_id
 WHERE
-  ($1::text IS NULL OR p.name ILIKE $1::text OR b.supplier_name ILIKE $1::text)
+  ($1::text IS NULL OR p.name ILIKE $1::text)
   AND ($2::text IS NULL OR b.supplier_name ILIKE $2::text)
   AND ($3::text IS NULL OR b.type = $3::text)
   AND ($4::date IS NULL OR b.created_at::date >= $4::date)
@@ -47,30 +47,54 @@ WHERE
 
     const total = parseInt(countResult.rows[0].count, 10);
 
-    const dataResult = await pool.query(
-      `
-      WITH matched AS (${matchedSql})
-      SELECT
-        b.id AS exit_id,
-        b.supplier_id AS party_id,
-        b.supplier_name AS party_name,
-        b.contact,
-        b.type AS exit_type,
-        b.created_at,
-        COUNT(se.id) AS item_count,
-        SUM(se.quantity) AS total_quantity,
-        SUM(se.quantity * se.unit_price) AS total_amount,
-        STRING_AGG(DISTINCT p.name, ', ') AS product_names
-      FROM stock_exit_bills b
-      JOIN stock_exit_entries se ON se.bill_id = b.id
-      JOIN products p ON p.id = se.product_id
-      WHERE b.id IN (SELECT id FROM matched)
-      GROUP BY b.id
-      ORDER BY b.created_at DESC
-      LIMIT $6 OFFSET $7
-      `,
-      [productParam, partyParam, type, startDate, endDate, limit, offset]
-    );
+const dataResult = await pool.query(
+  `
+  WITH matched AS (${matchedSql})
+  SELECT
+    b.id AS exit_id,
+    b.supplier_id AS party_id,
+    b.supplier_name AS party_name,
+    b.contact,
+    b.type AS exit_type,
+    b.created_at,
+
+    COUNT(se.id) AS item_count,
+    SUM(se.quantity) AS total_quantity,
+    SUM(se.quantity * se.unit_price) AS total_amount,
+
+    -- products
+    STRING_AGG(DISTINCT p.name, ', ') AS product_names,
+
+    -- ✅ FULL VARIANT DETAILS
+    COALESCE(
+      json_agg(
+        DISTINCT jsonb_build_object(
+          'product_id', p.id,
+          'product_name', p.name,
+          'variant_id', v.id,
+          'size', v.size,
+          'color', v.color,
+          'memory', v.memory,
+          'quantity', se.quantity,
+          'unit_price', se.unit_price
+        )
+      ) FILTER (WHERE se.id IS NOT NULL),
+      '[]'
+    ) AS items
+
+  FROM stock_exit_bills b
+  JOIN stock_exit_entries se ON se.bill_id = b.id
+  JOIN products p ON p.id = se.product_id
+  LEFT JOIN product_variants v ON v.id = se.variant_id
+
+  WHERE b.id IN (SELECT id FROM matched)
+
+  GROUP BY b.id
+  ORDER BY b.created_at DESC
+  LIMIT $6 OFFSET $7
+  `,
+  [productParam, partyParam, type, startDate, endDate, limit, offset]
+);
 
     res.json({
       data: dataResult.rows,
@@ -101,10 +125,22 @@ router.get("/stock-exits/:id", async (req, res) => {
 
     const items = await pool.query(
       `
-      SELECT se.*, p.name AS product_name
+      SELECT
+        se.id,
+        se.product_id,
+        se.variant_id,
+        se.quantity,
+        se.unit_price,
+        p.name AS product_name,
+
+        v.size,
+        v.color,
+        v.memory
+
       FROM stock_exit_entries se
       JOIN products p ON p.id = se.product_id
-      WHERE se.bill_id=$1
+      LEFT JOIN product_variants v ON v.id = se.variant_id
+      WHERE se.bill_id = $1
       `,
       [req.params.id]
     );
@@ -112,7 +148,7 @@ router.get("/stock-exits/:id", async (req, res) => {
     res.json({ ...bill.rows[0], items: items.rows });
   } catch (err) {
     console.error("GET /stock-exits/:id error:", err);
-    res.status(500).json({ message: "Failed" });
+    res.status(500).json({ message: "Failed to load exit details" });
   }
 });
 
@@ -172,7 +208,7 @@ router.post("/stock-exits", async (req, res) => {
           item.product_id,
           item.variant_id,
           item.quantity,
-          item.unit_price,
+        item.unit_price || 0,
         ]
       );
     }
@@ -190,6 +226,85 @@ router.post("/stock-exits", async (req, res) => {
     res.status(500).json({ message: "Failed to create exit" });
   } finally {
     client.release();
+  }
+});
+
+router.post("/stock-exits/export", async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    const result = await pool.query(
+      `
+      SELECT b.id, b.supplier_name, b.created_at,
+             se.product_id, p.name AS product_name,
+             se.quantity, se.unit_price
+      FROM stock_exit_bills b
+      JOIN stock_exit_entries se ON se.bill_id = b.id
+      JOIN products p ON p.id = se.product_id
+      WHERE b.id = ANY($1)
+      ORDER BY b.created_at DESC
+      `,
+      [ids]
+    );
+
+    let csv = "ExitID,Product,Qty,Unit Price,Total\n";
+
+    for (const r of result.rows) {
+      csv += `${r.id},${r.product_name},${r.quantity},${r.unit_price},${r.quantity * r.unit_price}\n`;
+    }
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="stock-exits.csv"'
+    );
+
+    res.send(csv);
+  } catch (err) {
+    console.error("EXPORT ERROR:", err);
+    res.status(500).json({ message: "Export failed" });
+  }
+});
+router.get("/products/search", async (req, res) => {
+  const q = req.query.q?.trim() || "";
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        p.id,
+        p.name,
+        p.qty,
+        p.sale_price,
+
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', v.id,
+              'product_id', v.product_id,
+              'size', v.size,
+              'color', v.color,
+              'memory', v.memory,
+              'qty', v.qty
+            )
+          ) FILTER (WHERE v.id IS NOT NULL),
+          '[]'
+        ) AS variants
+
+      FROM products p
+      LEFT JOIN product_variants v ON v.product_id = p.id
+      WHERE p.name ILIKE $1
+      GROUP BY p.id
+      ORDER BY p.name ASC
+      LIMIT 20
+      `,
+      [`%${q}%`]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("PRODUCT SEARCH ERROR:", err);
+    res.status(500).json({ message: "Failed to search products" });
   }
 });
 module.exports = router;

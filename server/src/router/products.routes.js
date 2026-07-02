@@ -163,27 +163,113 @@ router.put("/:id", upload.single("image"), async (req, res) => {
 
 // DELETE
 router.delete("/:id", async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const id = req.params.id;
 
-    // delete child tables first
-    await pool.query("DELETE FROM product_variants WHERE product_id = $1", [id]);
-    await pool.query("DELETE FROM product_sizes WHERE product_id = $1", [id]);
-    await pool.query("DELETE FROM product_colors WHERE product_id = $1", [id]);
-    await pool.query("DELETE FROM product_memory WHERE product_id = $1", [id]);
+    console.log("Deleting product id:", id);
 
-    // then delete product
-    await pool.query("DELETE FROM products WHERE id = $1", [id]);
+    await client.query("BEGIN");
 
-    res.json({ message: "Product deleted successfully" });
+    // 1. Get all variant IDs for this product
+    const variantsResult = await client.query(
+      "SELECT id FROM product_variants WHERE product_id = $1",
+      [id]
+    );
+
+    const variantIds = variantsResult.rows.map((v) => v.id);
+
+    // 2. Delete stock entries FIRST (this was causing your error)
+    if (variantIds.length > 0) {
+      await client.query(
+        `DELETE FROM stock_exit_entries 
+         WHERE variant_id = ANY($1::int[])`,
+        [variantIds]
+      );
+      console.log("stock_exit_entries deleted");
+    }
+
+    // 3. Delete dependent product tables
+    await client.query(
+      "DELETE FROM product_sizes WHERE product_id = $1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM product_colors WHERE product_id = $1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM product_memory WHERE product_id = $1",
+      [id]
+    );
+
+    console.log("product child tables deleted");
+
+    // 4. Delete variants
+    await client.query(
+      "DELETE FROM product_variants WHERE product_id = $1",
+      [id]
+    );
+
+    console.log("variants deleted");
+
+    // 5. Delete product itself
+    const result = await client.query(
+      "DELETE FROM products WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: "Product deleted successfully",
+      product: result.rows[0],
+    });
   } catch (err) {
-    console.log("DELETE ERROR:", err);
+    await client.query("ROLLBACK");
+
+    console.log("🔥 DELETE ERROR:", err);
+
     res.status(500).json({
       message: err.message,
       detail: err.detail,
       code: err.code,
     });
+  } finally {
+    client.release();
   }
 });
+router.get("/search", async (req, res) => {
+  try {
+    const q = req.query.q || "";
 
+    const result = await pool.query(
+      `
+    SELECT
+  p.id,
+  p.name,
+  p.description,
+  p.brand_id,
+  p.category_id,
+  p.image,
+  COALESCE(p.sale_price, 0)::float AS sale_price,
+  COALESCE(SUM(v.qty), 0)::int AS qty
+FROM products p
+LEFT JOIN product_variants v ON v.product_id = p.id
+WHERE 1=1
+GROUP BY p.id
+      ORDER BY p.name
+      LIMIT 20
+      `,
+      [`%${q}%`]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 module.exports = router;

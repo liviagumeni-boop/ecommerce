@@ -2,10 +2,10 @@ import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
-
+import DateRangeFilter from "../../../componets/common/datarange";
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
-import { FaEye, FaTrash, FaPlus, FaExternalLinkAlt } from "react-icons/fa";
+import { FaEye, FaTrash, FaExternalLinkAlt } from "react-icons/fa";
 
 /* ================= TYPES ================= */
 
@@ -95,27 +95,18 @@ type DraftItem = {
   unitPrice: number;
 };
 
-/* ================= NEW-PRODUCT (dynamic attributes) TYPES ================= */
-type Attribute = {
-  name: string;
-  values: string[];
-};
+const isEmptyVariant = (v: any) =>
+  (!v.size || v.size === "") &&
+  (!v.color || v.color === "") &&
+  (!v.memory || v.memory === "");
 
-type NewProductVariant = {
-  attributes: Record<string, string>;
-  qty: number;
-};
+const variantLabel = (v: any) => {
+  if (isEmptyVariant(v)) return null; // 👈 IMPORTANT: not "Default"
 
-const cartesian = (arrays: string[][]): string[][] => {
-  if (arrays.length === 0) return [];
-  return arrays.reduce<string[][]>(
-    (acc, curr) => acc.flatMap((a) => curr.map((c) => [...a, c])),
-    [[]]
-  );
+  return [v.size, v.color, v.memory]
+    .filter((x) => x && x.trim?.() !== "")
+    .join(" / ");
 };
-
-const variantLabel = (v: { size: string | null; color: string | null; memory: string | null }) =>
-  [v.size, v.color, v.memory].filter(Boolean).join(" / ") || "Default";
 
 // "C" for customer, "S" for supplier -> e.g. C102 / S7
 const partyCode = (partyType: PartyType | null | undefined, partyId: number | null) => {
@@ -178,29 +169,6 @@ const Exits: React.FC = () => {
   const [detailEntry, setDetailEntry] = useState<ExitDetail | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
 
-  /* ================= ADD PRODUCT MODAL STATE ================= */
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
-
-  const [brands, setBrands] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    description: "",
-    brand_id: 0,
-    category_id: 0,
-    image: null as File | null,
-    purchase_price: 0,
-    sale_price: 0,
-    in_stock: true,
-  });
-
-  const [attributes, setAttributes] = useState<Attribute[]>([]);
-  const [newAttrName, setNewAttrName] = useState("");
-  const [valueDrafts, setValueDrafts] = useState<Record<number, string>>({});
-  const [newProductVariants, setNewProductVariants] = useState<NewProductVariant[]>([]);
-  const [savingNewProduct, setSavingNewProduct] = useState(false);
-
   const [deleteEntry, setDeleteEntry] = useState<ExitRow | null>(null);
 
   /* ================= SELECTION / DOWNLOAD ================= */
@@ -248,30 +216,6 @@ const Exits: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, productSearch, partySearch, startDate, endDate, typeFilter]);
 
-  /* ================= FETCH BRANDS / CATEGORIES (for Add Product form) ================= */
-  const fetchBrands = async () => {
-    try {
-      const res = await api.get("/brands");
-      setBrands(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const res = await api.get("/categories");
-      setCategories(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchBrands();
-    fetchCategories();
-  }, []);
-
   /* ================= PRODUCT SEARCH (debounced) ================= */
   useEffect(() => {
     if (!productQuery.trim()) {
@@ -310,19 +254,39 @@ const Exits: React.FC = () => {
     return () => clearTimeout(timer);
   }, [partyQuery, exitType]);
 
+  /* ================= LOAD FULL PARTY LIST FOR THE SELECT DROPDOWN =================
+     The select needs to show every customer / supplier up front, not just
+     whatever the debounced search box has matched so far. We fetch the
+     full list whenever the modal opens or the exit type (customer vs
+     supplier) changes. If the search box is later used, its results just
+     overwrite this list, which is fine since they share the same shape. */
+  const fetchAllParties = async () => {
+    try {
+      const res = await api.get("/suppliers/search", {
+        params: { q: "", type: exitType === "sale" ? "customer" : "supplier" },
+      });
+      setPartyResults(res.data || []);
+    } catch (err) {
+      console.log(err);
+      showToast("Failed to load customers / suppliers", "error" as any);
+    }
+  };
+
+  useEffect(() => {
+    if (showModal) fetchAllParties();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal, exitType]);
+
   /* ================= CLICK OUTSIDE ================= */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Don't close the "New Exit" modal because of a click that's actually
-      // happening inside the "Add Product" modal stacked on top of it.
-      if (showAddProductModal) return;
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         setShowModal(false);
       }
     };
     if (showModal) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showModal, showAddProductModal]);
+  }, [showModal]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -356,31 +320,34 @@ const Exits: React.FC = () => {
     setShowPartyResults(false);
   };
 
-  /* ================= PRODUCT PICK ================= */
-const pickProduct = (p: ProductSearchResult) => {
-  if (draftItems.some((d) => d.product.id === p.id)) {
-    showToast("Product already added", "warning" as any);
-    setShowProductResults(false);
+  /* ================= PRODUCT PICK =================
+     Products already exist in stock — this page only records an exit
+     (sale / return) against them. Price always comes from the product's
+     own sale_price, never typed in by hand. */
+  const pickProduct = (p: ProductSearchResult) => {
+    if (draftItems.some((d) => d.product.id === p.id)) {
+      showToast("Product already added", "warning" as any);
+      setShowProductResults(false);
+      setProductQuery("");
+      return;
+    }
+
+    const price = Number(p.sale_price ?? 0);
+
+    setDraftItems((prev) => [
+      ...prev,
+      {
+        product: p,
+        variantQty: {},
+        qty: 1,
+    unitPrice: Number(p.sale_price ?? 0) // price sourced from the product record
+      },
+    ]);
+
     setProductQuery("");
-    return;
-  }
-
-  const price = p.sale_price || 0;
-
-  setDraftItems((prev) => [
-    ...prev,
-    {
-      product: p,
-      variantQty: {},
-      qty: 1,
-      unitPrice: price, // AUTO PRICE
-    },
-  ]);
-
-  setProductQuery("");
-  setProductResults([]);
-  setShowProductResults(false);
-};
+    setProductResults([]);
+    setShowProductResults(false);
+  };
 
   const removeDraftItem = (productId: number) => {
     setDraftItems((prev) => prev.filter((d) => d.product.id !== productId));
@@ -402,12 +369,6 @@ const pickProduct = (p: ProductSearchResult) => {
     );
   };
 
-  const setUnitPrice = (productId: number, unitPrice: number) => {
-    setDraftItems((prev) =>
-      prev.map((d) => (d.product.id === productId ? { ...d, unitPrice } : d))
-    );
-  };
-
   // Live running total for the draft bill, shown in the modal footer.
   const draftTotal = draftItems.reduce((sum, d) => {
     const qty =
@@ -416,150 +377,6 @@ const pickProduct = (p: ProductSearchResult) => {
         : d.qty || 0;
     return sum + qty * (d.unitPrice || 0);
   }, 0);
-
-  /* ================= NEW PRODUCT: ATTRIBUTE HELPERS ================= */
-  const addAttribute = () => {
-    const name = newAttrName.trim();
-    if (!name) return;
-    if (attributes.some((a) => a.name.toLowerCase() === name.toLowerCase())) {
-      showToast("That attribute already exists", "warning" as any);
-      return;
-    }
-    setAttributes((prev) => [...prev, { name, values: [] }]);
-    setNewAttrName("");
-    setNewProductVariants([]);
-  };
-
-  const removeAttribute = (index: number) => {
-    setAttributes((prev) => prev.filter((_, i) => i !== index));
-    setValueDrafts((prev) => {
-      const next = { ...prev };
-      delete next[index];
-      return next;
-    });
-    setNewProductVariants([]);
-  };
-
-  const addValueToAttribute = (index: number) => {
-    const value = (valueDrafts[index] || "").trim();
-    if (!value) return;
-
-    setAttributes((prev) =>
-      prev.map((a, i) => {
-        if (i !== index) return a;
-        if (a.values.some((v) => v.toLowerCase() === value.toLowerCase())) {
-          showToast("That value already exists", "warning" as any);
-          return a;
-        }
-        return { ...a, values: [...a.values, value] };
-      })
-    );
-    setValueDrafts((prev) => ({ ...prev, [index]: "" }));
-    setNewProductVariants([]);
-  };
-
-  const removeValueFromAttribute = (index: number, value: string) => {
-    setAttributes((prev) =>
-      prev.map((a, i) =>
-        i === index ? { ...a, values: a.values.filter((v) => v !== value) } : a
-      )
-    );
-    setNewProductVariants([]);
-  };
-
-  const generatedCombos: Record<string, string>[] =
-    attributes.length > 0 && attributes.every((a) => a.values.length > 0)
-      ? cartesian(attributes.map((a) => a.values)).map((combo) =>
-          Object.fromEntries(attributes.map((a, i) => [a.name, combo[i]]))
-        )
-      : [];
-
-  const setNewProductVariantQty = (combo: Record<string, string>, qty: number) => {
-    setNewProductVariants((prev) => {
-      const key = JSON.stringify(combo);
-      const idx = prev.findIndex((v) => JSON.stringify(v.attributes) === key);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...next[idx], qty };
-        return next;
-      }
-      return [...prev, { attributes: combo, qty }];
-    });
-  };
-
-  const getNewProductVariantQty = (combo: Record<string, string>) => {
-    const key = JSON.stringify(combo);
-    return newProductVariants.find((v) => JSON.stringify(v.attributes) === key)?.qty ?? "";
-  };
-
-  const resetNewProduct = () => {
-    setNewProduct({
-      name: "",
-      description: "",
-      brand_id: 0,
-      category_id: 0,
-      image: null,
-      purchase_price: 0,
-      sale_price: 0,
-      in_stock: true,
-    });
-    setAttributes([]);
-    setNewAttrName("");
-    setValueDrafts({});
-    setNewProductVariants([]);
-  };
-
-  /* ================= ADD PRODUCT (from Exit page) ================= */
-  const addProductForExit = async () => {
-    if (!newProduct.name.trim()) {
-      showToast("Product name is required", "warning" as any);
-      return;
-    }
-
-    setSavingNewProduct(true);
-    try {
-      const formData = new FormData();
-      formData.append("name", newProduct.name);
-      formData.append("description", newProduct.description);
-      formData.append("brand_id", String(newProduct.brand_id));
-      formData.append("category_id", String(newProduct.category_id));
-      formData.append("purchase_price", String(newProduct.purchase_price));
-      formData.append("sale_price", String(newProduct.sale_price));
-      formData.append("in_stock", String(newProduct.in_stock));
-      formData.append("variants", JSON.stringify(newProductVariants));
-
-      if (newProduct.image) {
-        formData.append("image", newProduct.image as any);
-      }
-
-      await api.post("/products", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      showToast("Product created successfully", "success");
-
-      try {
-        const res = await api.get("/products/search", { params: { q: newProduct.name } });
-        const created: ProductSearchResult | undefined = (res.data || []).find(
-          (p: ProductSearchResult) => p.name.toLowerCase() === newProduct.name.trim().toLowerCase()
-        ) || res.data?.[0];
-
-        if (created) {
-          pickProduct(created);
-        }
-      } catch (err) {
-        console.log(err);
-      }
-
-      resetNewProduct();
-      setShowAddProductModal(false);
-    } catch (err) {
-      console.log(err);
-      showToast("Failed to create product", "error" as any);
-    } finally {
-      setSavingNewProduct(false);
-    }
-  };
 
   /* ================= RESET ================= */
   const resetForm = () => {
@@ -654,17 +471,19 @@ const pickProduct = (p: ProductSearchResult) => {
 
     setExpandedExitId(exitId);
 
-    if (!expandedItems[exitId]) {
+    try {
       setExpandLoading(exitId);
-      try {
-        const res = await api.get(`/stock-exits/${exitId}`);
-        setExpandedItems((prev) => ({ ...prev, [exitId]: res.data.items || [] }));
-      } catch (err) {
-        console.log(err);
-        showToast("Failed to load exit items", "error" as any);
-      } finally {
-        setExpandLoading(null);
-      }
+
+      const res = await api.get(`/stock-exits/${exitId}`);
+
+      setExpandedItems((prev) => ({
+        ...prev,
+        [exitId]: res.data.items || [],
+      }));
+    } catch (err) {
+      showToast("Failed to load exit items", "error" as any);
+    } finally {
+      setExpandLoading(null);
     }
   };
 
@@ -695,7 +514,13 @@ const pickProduct = (p: ProductSearchResult) => {
     }
   };
 
+  /* ================= DOWNLOAD SELECTED ================= */
   const downloadSelected = async () => {
+    if (selectedExits.size === 0) {
+      showToast("Select at least one exit to download", "warning" as any);
+      return;
+    }
+
     try {
       const ids = Array.from(selectedExits);
 
@@ -712,12 +537,18 @@ const pickProduct = (p: ProductSearchResult) => {
         { responseType: "blob" }
       );
 
-      const blob = new Blob([res.data], { type: "text/csv" });
+      const contentType = res.headers?.["content-type"]?.toString?.() || "text/csv";
+      const blob = new Blob([res.data], { type: contentType });
+
+      // Prefer the filename the server suggests, if any.
+      const disposition = res.headers?.["content-disposition"]?.toString?.() || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] || "stock-exits.csv";
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "stock-exits.csv";
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -775,26 +606,12 @@ const pickProduct = (p: ProductSearchResult) => {
               <option value="return">Return to Supplier</option>
             </select>
 
-            <input
-              type="date"
-              className="form-control"
-              style={{ maxWidth: 180 }}
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPage(1);
-              }}
-            />
-
-            <span>to</span>
-
-            <input
-              type="date"
-              className="form-control"
-              style={{ maxWidth: 180 }}
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
+            <DateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(start: string, end: string) => {
+                setStartDate(start);
+                setEndDate(end);
                 setPage(1);
               }}
             />
@@ -837,13 +654,12 @@ const pickProduct = (p: ProductSearchResult) => {
                       />
                     </th>
                     <th>Id</th>
-                    <th>Customer / Supplier Id</th>
                     <th>Date</th>
                     <th>Products</th>
                     <th>Type</th>
-                    <th>Total Qty</th>
+                    <th> Qty</th>
                     <th>Total</th>
-                    <th>Customer / Supplier</th>
+                    <th>Customer</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -859,7 +675,6 @@ const pickProduct = (p: ProductSearchResult) => {
                           />
                         </td>
                         <td>EXIT#{r.exit_id}</td>
-                        <td>{partyCode(r.party_type, r.party_id)}</td>
                         <td>{new Date(r.created_at).toLocaleDateString()}</td>
                         <td style={{ maxWidth: 240 }} className="text-truncate">
                           {r.product_names}
@@ -1026,37 +841,25 @@ const pickProduct = (p: ProductSearchResult) => {
                   Every product added below will be saved together as a single exit.
                 </p>
 
-                {/* EXIT TYPE TOGGLE */}
-                <div className="btn-group mb-3" role="group">
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${exitType === "sale" ? "btn-success" : "btn-outline-success"}`}
-                    onClick={() => switchExitType("sale")}
-                  >
-                    Sale to Customer
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${exitType === "return" ? "btn-warning" : "btn-outline-warning"}`}
-                    onClick={() => switchExitType("return")}
-                  >
-                    Return to Supplier
-                  </button>
-                </div>
-<button
-  className="btn btn-outline-primary btn-sm"
-  onClick={() => alert("Create Customer/Supplier modal here")}
+            
+
+                {/* PARTY SELECT — shows every customer / supplier, not just search matches */}
+              <select
+  className="form-control mb-3"
+  value={exitType}
+  onChange={(e) => switchExitType(e.target.value as ExitType)}
 >
-  + New {exitType === "sale" ? "Customer" : "Supplier"}
-</button>
+  <option value="sale">Sale (Customer)</option>
+  <option value="return">Return to Supplier</option>
+</select>
                 {/* PARTY SEARCH */}
                 <div style={{ position: "relative" }}>
                   <input
                     className="form-control my-2"
                     placeholder={
                       exitType === "sale"
-                        ? "Search existing customer or type a new name"
-                        : "Search existing supplier or type a new name"
+                        ? "Search existing customer "
+                        : "Search existing supplier "
                     }
                     value={partyQuery}
                     onChange={(e) => {
@@ -1098,12 +901,9 @@ const pickProduct = (p: ProductSearchResult) => {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h6 className="mb-0">Add Products</h6>
 
-                  <div className="d-flex gap-2">
-                    <Link to="/admin/products" className="btn btn-outline-secondary btn-sm" target="_blank">
-                      <FaExternalLinkAlt className="me-1" /> Manage Products
-                    </Link>
-                   
-                  </div>
+                  <Link to="/admin/products" className="btn btn-outline-secondary btn-sm" target="_blank">
+                    <FaExternalLinkAlt className="me-1" /> Manage Products
+                  </Link>
                 </div>
 
                 {/* PRODUCT SEARCH */}
@@ -1169,11 +969,8 @@ const pickProduct = (p: ProductSearchResult) => {
                         </button>
                       </div>
 
-                      <div className="d-flex align-items-center gap-2 mt-2">
-                        <label className="mb-0">Unit Price:</label>
-                      <span className="text-muted small ms-auto">
-  Unit Price: {money(d.unitPrice)}
-</span>
+                      <div className="d-flex align-items-center mt-2">
+                        <span className="text-muted small">Unit Price: {money(d.unitPrice)}</span>
                         <span className="text-muted small ms-auto">
                           Line total: {money(lineQty * d.unitPrice)}
                         </span>
@@ -1245,222 +1042,6 @@ const pickProduct = (p: ProductSearchResult) => {
                       Save Exit
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= ADD PRODUCT MODAL (stacked above New Exit) ================= */}
-          {showAddProductModal && (
-            <div
-              className="d-flex align-items-center justify-content-center"
-              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100001 }}
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  resetNewProduct();
-                  setShowAddProductModal(false);
-                }
-              }}
-            >
-              <div
-                className="bg-white p-4 rounded"
-                style={{ width: 650, maxHeight: "90vh", overflowY: "auto", position: "relative", zIndex: 100002 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => {
-                    resetNewProduct();
-                    setShowAddProductModal(false);
-                  }}
-                  style={{
-                    position: "absolute",
-                    top: 10,
-                    right: 10,
-                    border: "none",
-                    background: "transparent",
-                    fontSize: 20,
-                    cursor: "pointer",
-                  }}
-                >
-                  ×
-                </button>
-
-                <h5>Add Product</h5>
-
-                <input
-                  className="form-control my-2"
-                  placeholder="Name"
-                  value={newProduct.name}
-                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                />
-
-                <input
-                  className="form-control my-2"
-                  placeholder="Description"
-                  value={newProduct.description}
-                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                />
-
-                <select
-                  className="form-control my-2"
-                  value={newProduct.brand_id}
-                  onChange={(e) => setNewProduct({ ...newProduct, brand_id: Number(e.target.value) })}
-                >
-                  <option value="">Select Brand</option>
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="form-control my-2"
-                  value={newProduct.category_id}
-                  onChange={(e) => setNewProduct({ ...newProduct, category_id: Number(e.target.value) })}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  type="file"
-                  className="form-control my-2"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    setNewProduct({ ...newProduct, image: file || null });
-                  }}
-                />
-
-                <input
-                  type="number"
-                  className="form-control my-2"
-                  placeholder="Purchase Price"
-                  value={newProduct.purchase_price || ""}
-                  onChange={(e) => setNewProduct({ ...newProduct, purchase_price: Number(e.target.value) })}
-                />
-
-                <input
-                  type="number"
-                  className="form-control my-2"
-                  placeholder="Sale Price"
-                  value={newProduct.sale_price || ""}
-                  onChange={(e) => setNewProduct({ ...newProduct, sale_price: Number(e.target.value) })}
-                />
-
-                <div className="form-check my-2">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    checked={newProduct.in_stock}
-                    onChange={(e) => setNewProduct({ ...newProduct, in_stock: e.target.checked })}
-                  />
-                  <label>In Stock</label>
-                </div>
-
-                <hr />
-                <h6>Attributes (Variants)</h6>
-
-                <div className="d-flex gap-2 mb-2">
-                  <input
-                    className="form-control"
-                    placeholder="Attribute name (Color, Storage...)"
-                    value={newAttrName}
-                    onChange={(e) => setNewAttrName(e.target.value)}
-                  />
-                  <button className="btn btn-outline-primary" onClick={addAttribute}>
-                    + Add
-                  </button>
-                </div>
-
-                {attributes.map((attr, idx) => (
-                  <div key={idx} className="border p-2 mb-2 rounded bg-light">
-                    <div className="d-flex justify-content-between">
-                      <strong>{attr.name}</strong>
-                      <button className="btn btn-sm btn-danger" onClick={() => removeAttribute(idx)}>
-                        Remove
-                      </button>
-                    </div>
-
-                    <div className="d-flex flex-wrap gap-2 mt-2">
-                      {attr.values.map((v) => (
-                        <span key={v} className="badge bg-secondary d-flex align-items-center gap-1">
-                          {v}
-                          <span style={{ cursor: "pointer" }} onClick={() => removeValueFromAttribute(idx, v)}>
-                            ×
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="d-flex gap-2 mt-2">
-                      <input
-                        className="form-control form-control-sm"
-                        placeholder="Add value"
-                        value={valueDrafts[idx] || ""}
-                        onChange={(e) => setValueDrafts({ ...valueDrafts, [idx]: e.target.value })}
-                        onKeyDown={(e) => e.key === "Enter" && addValueToAttribute(idx)}
-                      />
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => addValueToAttribute(idx)}>
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {generatedCombos.length > 0 && (
-                  <div className="mt-3">
-                    <h6>Variants Stock</h6>
-
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          {attributes.map((a) => (
-                            <th key={a.name}>{a.name}</th>
-                          ))}
-                          <th>Qty</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {generatedCombos.map((combo) => (
-                          <tr key={JSON.stringify(combo)}>
-                            {attributes.map((a) => (
-                              <td key={a.name}>{combo[a.name]}</td>
-                            ))}
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={getNewProductVariantQty(combo)}
-                                onChange={(e) => setNewProductVariantQty(combo, Number(e.target.value))}
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                <div className="d-flex justify-content-end gap-2 mt-3">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      resetNewProduct();
-                      setShowAddProductModal(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-
-                  <button className="btn btn-primary" onClick={addProductForExit} disabled={savingNewProduct}>
-                    {savingNewProduct ? "Saving..." : "Save"}
-                  </button>
                 </div>
               </div>
             </div>
