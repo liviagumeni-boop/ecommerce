@@ -127,7 +127,7 @@ showToast("Profile updated", "success");
     // notify Header (and any other listener) in THIS tab that auth changed
     window.dispatchEvent(new Event("authChanged"));
     showToast("Logged out", "success");
-    navigate("/login");
+    navigate("/");
   };
 
   return (

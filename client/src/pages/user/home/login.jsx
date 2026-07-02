@@ -12,36 +12,47 @@ export default function Login() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-const handleLogin = async (e) => {
-  e.preventDefault();
+  const handleLogin = async (e) => {
+    e.preventDefault();
 
-  try {
-    const { token, user } = await loginUser(email, password);
+    try {
+      const { token, user } = await loginUser(email, password);
 
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("admin");
-    localStorage.removeItem("userToken");
-    localStorage.removeItem("user");
+      console.log("LOGIN RESPONSE:", { token, user });
 
-    if (user.role === "admin") {
+      // clear old data
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("admin");
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+
+      // normalize role
+      const role = (user?.role || "").toLowerCase().trim();
+
+      // IMPORTANT: store exactly what AdminRoute expects
       localStorage.setItem("adminToken", token);
-      localStorage.setItem("admin", JSON.stringify(user));
+      localStorage.setItem("admin", JSON.stringify({ ...user, role }));
 
-      window.location.href = "/admin";
-    } else {
-      localStorage.setItem("userToken", token);
+      // optional global storage
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
       localStorage.setItem("user", JSON.stringify(user));
 
-      window.location.href = "/";
+      window.dispatchEvent(new Event("authChanged"));
+
+      // navigation
+      if (role === "admin") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
+      console.log("LOGIN ERROR:", err);
+      showToast("Email or password is incorrect", "error");
     }
-  } catch (err) {
-    console.log(err.response?.data);
-    showToast(
-      err.response?.data?.message || "Email or password is incorrect",
-      "error"
-    );
-  }
-};
+  };
 
   const loginWithGoogle = () => {
     window.location.href = `${

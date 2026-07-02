@@ -22,20 +22,21 @@ type Product = {
 
 function Header() {
   const navigate = useNavigate();
-  const cartRef = useRef<HTMLDivElement>(null);
-const favRef = useRef<HTMLDivElement>(null);
 
-  // track login state reactively instead of reading localStorage once
-  const [isLoggedIn, setIsLoggedIn] = useState<string | null>(
-    localStorage.getItem("token")
-  );
+  const cartRef = useRef<HTMLDivElement>(null);
+  const favRef = useRef<HTMLDivElement>(null);
+
+  // 🔥 AUTH STATE (FIXED)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const syncAuth = () => setIsLoggedIn(localStorage.getItem("token"));
+    const syncAuth = () => {
+      setIsLoggedIn(!!localStorage.getItem("token"));
+    };
 
-    // fires when localStorage changes from ANOTHER tab/window
+    syncAuth(); // initial check
+
     window.addEventListener("storage", syncAuth);
-    // fires when we dispatch it ourselves (e.g. after logout in this tab)
     window.addEventListener("authChanged", syncAuth);
 
     return () => {
@@ -44,26 +45,39 @@ const favRef = useRef<HTMLDivElement>(null);
     };
   }, []);
 
-  const { cart, removeFromCart, increaseQty, decreaseQty, addToCart } = useCart();
+  const {
+    cart,
+    removeFromCart,
+    increaseQty,
+    decreaseQty,
+    addToCart,
+  } = useCart();
+
   const { favorites, removeFromFavorites } = useFavorites();
 
   const [openCart, setOpenCart] = useState(false);
   const [openFav, setOpenFav] = useState(false);
-const closeCart = () => setOpenCart(false);
-const closeFav = () => setOpenFav(false);
-  useEffect(() => {
-   const handleClickOutside = (e: MouseEvent) => {
-  if (cartRef.current && !cartRef.current.contains(e.target as Node)) setOpenCart(false);
-  if (favRef.current && !favRef.current.contains(e.target as Node)) setOpenFav(false);
-};
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const cartCount = cart.reduce(
     (sum: number, item: Product) => sum + (item.qty || 1),
     0
   );
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (cartRef.current && !cartRef.current.contains(e.target as Node)) {
+        setOpenCart(false);
+      }
+
+      if (favRef.current && !favRef.current.contains(e.target as Node)) {
+        setOpenFav(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <header className="navbar navbar-dark bg-dark px-3 d-flex align-items-center position-relative">
@@ -74,59 +88,61 @@ const closeFav = () => setOpenFav(false);
       </button>
 
       {/* TITLE */}
-      <div className="text-white fw-bold mx-auto">Ecommerce Store</div>
+      <div className="text-white fw-bold mx-auto">
+        Ecommerce Store
+      </div>
 
       {/* RIGHT SIDE */}
       <div className="d-flex align-items-center gap-3 position-relative">
 
-       {/* ================= FAVORITES ================= */}
-{isLoggedIn && (
-  <div className="position-relative" ref={favRef}>
-    <button
-      className="btn btn-outline-light"
-      onClick={() => setOpenFav(!openFav)}
-    >
-      <FaHeart />
-    </button>
+        {/* ================= FAVORITES ================= */}
+        {isLoggedIn && (
+          <div className="position-relative" ref={favRef}>
+            <button
+              className="btn btn-outline-light"
+              onClick={() => setOpenFav(!openFav)}
+            >
+              <FaHeart />
+            </button>
 
-    {openFav && (
-      <div
-        className="position-absolute bg-white shadow p-2"
-        style={{ right: 0, width: 300, zIndex: 999 }}
-      >
-        <h6>Favorites</h6>
+            {openFav && (
+              <div
+                className="position-absolute bg-white shadow p-2"
+                style={{ right: 0, width: 300, zIndex: 999 }}
+              >
+                <h6>Favorites</h6>
 
-        {favorites.length === 0 && <small>Empty</small>}
+                {favorites.length === 0 && <small>Empty</small>}
 
-        {favorites.map((p: Product) => (
-          <div
-            key={p.id}
-            className="d-flex justify-content-between border-bottom py-1"
-          >
-            <span>{p.name}</span>
+                {favorites.map((p: Product) => (
+                  <div
+                    key={p.id}
+                    className="d-flex justify-content-between border-bottom py-1"
+                  >
+                    <span>{p.name}</span>
 
-            <div className="d-flex gap-2">
-              <FaShoppingCart
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  addToCart(p);
-                  setOpenFav(false);
-                }}
-              />
-              <FaTrash
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  removeFromFavorites(p.id);
-                  setOpenFav(false);
-                }}
-              />
-            </div>
+                    <div className="d-flex gap-2">
+                      <FaShoppingCart
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          addToCart(p);
+                          setOpenFav(false);
+                        }}
+                      />
+                      <FaTrash
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          removeFromFavorites(p.id);
+                          setOpenFav(false);
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-    )}
-  </div>
-)}
+        )}
 
         {/* ================= CART ================= */}
         <div className="position-relative" ref={cartRef}>
@@ -173,7 +189,10 @@ const closeFav = () => setOpenFav(false);
                     <span>{p.name}</span>
                     <FaTrash
                       style={{ cursor: "pointer" }}
-                       onClick={() => { removeFromCart(p.id); setOpenCart(false); }}
+                      onClick={() => {
+                        removeFromCart(p.id);
+                        setOpenCart(false);
+                      }}
                     />
                   </div>
 
@@ -193,14 +212,20 @@ const closeFav = () => setOpenFav(false);
 
               <button
                 className="btn btn-dark w-100 mt-2"
-                onClick={() => { navigate("/cart"); setOpenCart(false); }}
+                onClick={() => {
+                  navigate("/cart");
+                  setOpenCart(false);
+                }}
               >
                 Open Cart
               </button>
 
               <button
                 className="btn btn-primary w-100 mt-1"
-                onClick={() => { navigate("/checkout"); setOpenCart(false); }}
+                onClick={() => {
+                  navigate("/checkout");
+                  setOpenCart(false);
+                }}
               >
                 Checkout
               </button>
@@ -208,7 +233,7 @@ const closeFav = () => setOpenFav(false);
           )}
         </div>
 
-        {/* ================= USER AUTH ================= */}
+        {/* ================= AUTH ================= */}
         {!isLoggedIn ? (
           <>
             <button
@@ -233,7 +258,6 @@ const closeFav = () => setOpenFav(false);
             <FaUser />
           </button>
         )}
-
       </div>
     </header>
   );

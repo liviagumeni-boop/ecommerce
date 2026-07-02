@@ -18,7 +18,7 @@ import UserOrders from "./pages/user/order/order";
 import Signup from "./pages/user/home/signup";
 import PaymentSuccess from "./pages/user/home/PaymentSuccess";
 import PaymentFailed from "./pages/user/home/PayemtFailed";
-
+import UserRoute from "./routes/UserRoute";
 // ADMIN PAGES
 import Products from "./pages/admin/products/products";
 import Entries from "./pages/admin/products/enter";
@@ -74,59 +74,68 @@ function App() {
               />
 
               {/* 🟢 USER PAGES */}
-              <Route
-                path="/profile"
-                element={
-                  <UserLayout>
-                    <Profile />
-                  </UserLayout>
-                }
-              />
-
+         <Route
+  path="/profile"
+  element={
+    <UserRoute>
+      <UserLayout>
+        <Profile />
+      </UserLayout>
+    </UserRoute>
+  }
+/>
               <Route
                 path="/cart"
                 element={
+                  <UserRoute>
                   <UserLayout>
                     <Cart />
-                  </UserLayout>
+                  </UserLayout></UserRoute>
                 }
               />
 
               <Route
                 path="/checkout"
                 element={
+                  <UserRoute>
                   <UserLayout>
                     <Checkout />
-                  </UserLayout>
+                  </UserLayout></UserRoute>
                 }
               />
 <Route path="/checkout/return" element={<CheckoutReturn />} />
-              <Route
-                path="/payment-success"
-                element={
-                  <UserLayout>
-                    <PaymentSuccess />
-                  </UserLayout>
-                }
-              />
+             <Route
+  path="/payment-success"
+  element={
+    <UserRoute>
+      <UserLayout>
+        <PaymentSuccess />
+      </UserLayout>
+    </UserRoute>
+  }
+/>
 
-              <Route
-                path="/payment-failed"
-                element={
-                  <UserLayout>
-                    <PaymentFailed />
-                  </UserLayout>
-                }
-              />
+             <Route
+  path="/payment-failed"
+  element={
+    <UserRoute>
+      <UserLayout>
+        <PaymentFailed />
+      </UserLayout>
+    </UserRoute>
+  }
+/>
 
-              <Route
-                path="/orders"
-                element={
-                  <UserLayout>
-                    <UserOrders />
-                  </UserLayout>
-                }
-              />
+            <Route
+  path="/orders"
+  element={
+    <UserRoute>
+      <UserLayout>
+      <UserOrders />
+      </UserLayout>
+    </UserRoute>
+  }
+/>
 
               {/* 🔴 AUTH */}
               <Route path="/login" element={<Login />} />

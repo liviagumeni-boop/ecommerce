@@ -24,11 +24,21 @@ function AdminHeader() {
 
   // 👉 LOGOUT
 const handleLogout = () => {
+  // Remove admin auth
   localStorage.removeItem("adminToken");
   localStorage.removeItem("admin");
 
+  // Remove shared auth
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  localStorage.removeItem("user");
+
   sessionStorage.clear();
 
+  // Update the rest of the app
+  window.dispatchEvent(new Event("authChanged"));
+
+  // Go to login page
   navigate("/", { replace: true });
 };
   // 👉 SETTINGS NAVIGIM
