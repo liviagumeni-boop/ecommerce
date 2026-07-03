@@ -13,6 +13,7 @@ import {
   FaBell,
   FaSignOutAlt,
   FaCreditCard,
+  FaGoogle,
 } from "react-icons/fa";
 
 const Settings: React.FC = () => {
@@ -112,7 +113,48 @@ const handleSaveStripe = async () => {
   }
 };
 
+const [googleClientId, setGoogleClientId] = useState("");
+const [googleClientSecret, setGoogleClientSecret] = useState("");
+const [maskedGoogleSecret, setMaskedGoogleSecret] = useState<string | null>(null);
+const [savingGoogle, setSavingGoogle] = useState(false);
 
+useEffect(() => {
+  const fetchGoogle = async () => {
+    try {
+      const res = await api.get("/admin/settings/google");
+      setGoogleClientId(res.data.clientId || "");
+      setMaskedGoogleSecret(res.data.clientSecret);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchGoogle();
+}, []);
+
+const handleSaveGoogle = async () => {
+  if (!googleClientId && !googleClientSecret) {
+    showToast("Nothing to save", "error");
+    return;
+  }
+  setSavingGoogle(true);
+  try {
+    const payload: Record<string, string> = {};
+    if (googleClientId) payload.clientId = googleClientId;
+    if (googleClientSecret) payload.clientSecret = googleClientSecret;
+
+    await api.post("/admin/settings/google", payload);
+    showToast("Google OAuth settings saved", "success");
+
+    setGoogleClientSecret("");
+    const res = await api.get("/admin/settings/google");
+    setMaskedGoogleSecret(res.data.clientSecret);
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to save Google OAuth settings", "error");
+  } finally {
+    setSavingGoogle(false);
+  }
+};
 const handleLogout = () => {
   // Remove admin auth
   localStorage.removeItem("adminToken");
@@ -207,6 +249,13 @@ const handleLogout = () => {
 >
   <FaCreditCard className="me-2" />
   Payments
+</button>
+<button
+  className={`list-group-item list-group-item-action ${activeTab === "google" ? "active" : ""}`}
+  onClick={() => setActiveTab("google")}
+>
+  <FaGoogle className="me-2" />
+  Google Auth
 </button>
                   <button
                     className="list-group-item list-group-item-action text-danger"
@@ -356,8 +405,39 @@ const handleLogout = () => {
     </button>
   </>
 )}
+{activeTab === "google" && (
+  <>
+    <h5>Google OAuth</h5>
 
+    <label className="form-label mt-2">Client ID</label>
+    <input
+      className="form-control my-1"
+      placeholder="xxxxxx.apps.googleusercontent.com"
+      value={googleClientId}
+      onChange={(e) => setGoogleClientId(e.target.value)}
+    />
 
+    <label className="form-label mt-3">Client Secret</label>
+    <input
+      type="password"
+      className="form-control my-1"
+      placeholder={maskedGoogleSecret || "Not set"}
+      value={googleClientSecret}
+      onChange={(e) => setGoogleClientSecret(e.target.value)}
+    />
+    <small className="text-muted">
+      Leave blank to keep the current value.
+    </small>
+
+    <button
+      className="btn btn-primary mt-3"
+      onClick={handleSaveGoogle}
+      disabled={savingGoogle}
+    >
+      {savingGoogle ? "Saving..." : "Save Google Settings"}
+    </button>
+  </>
+)}
 
                 {/* SECURITY */}
                 {activeTab === "security" && (

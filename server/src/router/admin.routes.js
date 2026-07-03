@@ -2,6 +2,8 @@ const express = require("express");
 const pool = require("../config/db");
 const { encrypt, decrypt } = require("../utils/crypto");
 const { invalidateStripeCache } = require("../config/stripe");
+const { invalidateGoogleCache } = require("../config/google");
+
 const router = express.Router();
 
 /* =========================
@@ -159,5 +161,64 @@ router.post("/settings/stripe", async (req, res) => {
   }
 });
 
+router.get("/settings/google", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT google_client_id, google_client_secret FROM store_settings WHERE id = 1`
+    );
 
+    const row = rows[0];
+    if (!row) {
+      return res.json({ clientId: null, clientSecret: null });
+    }
+
+    const mask = (val) => (val ? `••••••••${val.slice(-4)}` : null);
+
+    res.json({
+      clientId: row.google_client_id || null,
+      clientSecret: row.google_client_secret ? mask(decrypt(row.google_client_secret)) : null,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/settings/google", async (req, res) => {
+  try {
+    const { clientId, clientSecret } = req.body;
+
+    const updates = [];
+    const values = [];
+    let i = 1;
+
+    if (clientId) {
+      updates.push(`google_client_id = $${i++}`);
+      values.push(clientId);
+    }
+    if (clientSecret) {
+      updates.push(`google_client_secret = $${i++}`);
+      values.push(encrypt(clientSecret));
+    }
+
+    if (!updates.length) {
+      return res.status(400).json({ message: "No values provided" });
+    }
+
+    values.push(1);
+    await pool.query(
+      `UPDATE store_settings SET ${updates.join(", ")} WHERE id = $${i}`,
+      values
+    );
+  invalidateGoogleCache();
+    await initGoogleStrategy().catch(err =>
+      console.warn("Failed to re-init Google strategy:", err.message)
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+});
 module.exports = router;

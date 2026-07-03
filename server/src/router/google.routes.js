@@ -1,19 +1,28 @@
 const express = require("express");
-const passport = require("../services/google.service");
+const { passport } = require("../services/google.service");
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
+function requireGoogleConfigured(req, res, next) {
+  if (!passport._strategy("google")) {
+    return res.status(503).json({ message: "Google sign-in is not configured yet" });
+  }
+  next();
+}
+
 // START GOOGLE LOGIN
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  requireGoogleConfigured,
+  (req, res, next) => passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next)
 );
 
 // CALLBACK
 router.get(
   "/google/callback",
-  passport.authenticate("google", { session: false }),
+  requireGoogleConfigured,
+  (req, res, next) => passport.authenticate("google", { session: false })(req, res, next),
   (req, res) => {
     const token = jwt.sign(
       { id: req.user.id, role: req.user.role },
