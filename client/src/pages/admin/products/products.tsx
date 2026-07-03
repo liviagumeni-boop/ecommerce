@@ -135,9 +135,10 @@ const [editProduct, setEditProduct] = useState({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
+useEffect(() => {
+  setCurrentPage(1);
+  setSelectedIds(new Set());
+}, [filters]);
 
   // ================= FETCH PRODUCTS =================
   const fetchProducts = async () => {
@@ -380,6 +381,69 @@ useEffect(() => {
   };
 }, [showModal]);
 const { showToast } = useToast();
+
+const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+const toggleSelect = (id: number) => {
+  setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+};
+
+const selectAllVisible = () => {
+  const allIds = currentPageProducts.map((p) => p.id);
+  setSelectedIds(new Set(allIds));
+};
+
+const clearSelection = () => {
+  setSelectedIds(new Set());
+};
+
+const currentPageProducts = products.slice(
+  (currentPage - 1) * itemsPerPage,
+  currentPage * itemsPerPage
+);
+
+const downloadSelected = () => {
+  const selectedProducts = products.filter((p) => selectedIds.has(p.id));
+
+  if (selectedProducts.length === 0) {
+    showToast("No products selected", "warning");
+    return;
+  }
+
+  const rows = selectedProducts.map((p) => ({
+    ID: p.id,
+    Name: p.name,
+    Brand: p.brand_name,
+    Category: p.category_name,
+    Qty: p.qty,
+    "Purchase Price": p.purchase_price,
+    "Sale Price": p.sale_price,
+  }));
+
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(","),
+    ...rows.map((r) =>
+      headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "products-export.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  window.URL.revokeObjectURL(url);
+};
   return (
     <div className="d-flex">
       <Sidebar />
@@ -496,6 +560,19 @@ const { showToast } = useToast();
               <table className="table align-middle mb-0">
                 <thead>
                   <tr>
+                    <th style={{ width: 32 }}>
+  <input
+    type="checkbox"
+    checked={
+      currentPageProducts.length > 0 &&
+      currentPageProducts.every((p) => selectedIds.has(p.id))
+    }
+    onChange={(e) => {
+      if (e.target.checked) selectAllVisible();
+      else clearSelection();
+    }}
+  />
+</th>
                     <th>Name</th>
                     <th>Brand</th>
                     <th>Category</th>
@@ -512,6 +589,13 @@ const { showToast } = useToast();
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((p) => (
                     <tr key={p.id}>
+                       <td onClick={(e) => e.stopPropagation()}>
+    <input
+      type="checkbox"
+      checked={selectedIds.has(p.id)}
+      onChange={() => toggleSelect(p.id)}
+    />
+  </td>
   {/* NAME */}
   <td>{p.name}</td>
 
@@ -1194,7 +1278,23 @@ const { showToast } = useToast();
               Next
             </button>
           </div>
+{selectedIds.size > 0 && (
+  <div className="d-flex gap-2 mb-3 align-items-center justify-content-end">
+    <span>{selectedIds.size} selected</span>
 
+    <button className="btn btn-outline-secondary btn-sm" onClick={selectAllVisible}>
+      Select All
+    </button>
+
+    <button className="btn btn-outline-secondary btn-sm" onClick={clearSelection}>
+      Clear
+    </button>
+
+    <button className="btn btn-primary btn-sm" onClick={downloadSelected}>
+      Download
+    </button>
+  </div>
+)}
           {/* ================= DELETE MODAL ================= */}
        {deleteModal && (
   <div
