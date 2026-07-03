@@ -160,7 +160,6 @@ const Orders: React.FC = () => {
         Date: new Date(o.created_at).toLocaleString(),
         Client: o.user_name || o.user_id,
         Total: o.total,
-        Status: o.status,
         UserID: o.user_id,
       });
     });
