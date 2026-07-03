@@ -46,6 +46,7 @@ type ExitType = "sale" | "return";
 type ExitRow = {
   exit_id: number;
   party_id: number | null;
+    exit_code: string; 
   party_name: string;
   party_type: PartyType;
   contact: string | null;
@@ -60,6 +61,7 @@ type ExitRow = {
 
 type ExitItem = {
   id: number;
+   exit_code: string; 
   product_id: number;
   variant_id: number | null;
   quantity: number;
@@ -72,6 +74,7 @@ type ExitItem = {
 
 type ExitDetail = {
   id: number;
+    exit_code: string; 
   party_id: number | null;
   party_name: string;
   party_type: PartyType;
@@ -538,19 +541,11 @@ const downloadSelected = async () => {
       exit.items.forEach((item) => {
         rows.push({
           ExitID: exit.id,
+          ExitCode: exit.exit_code, 
           Date: new Date(exit.created_at).toLocaleString(),
 
-          Type: exit.exit_type,
-          Party: exit.party_name,
-          PartyId:
-            exit.party_type && exit.party_id
-              ? `${exit.party_type === "customer" ? "C" : "S"}${String(
-                  exit.party_id
-                ).padStart(6, "0")}`
-              : "",
 
           Contact: exit.contact || "",
-          LinkedRecord: exit.party_table_name || "",
           ContactPerson: exit.party_contact_name || "",
           Phone: exit.party_phone || "",
           Email: exit.party_email || "",
@@ -761,6 +756,7 @@ const downloadSelected = async () => {
                               <table className="table table-sm mb-2 mt-2">
                                 <thead>
                                   <tr>
+                                  
                                     <th>Product</th>
                                     <th>Variant</th>
                                     <th>Qty</th>
@@ -771,6 +767,7 @@ const downloadSelected = async () => {
                                 <tbody>
                                   {(expandedItems[r.exit_id] || []).map((item) => (
                                     <tr key={item.id}>
+                                    
                                       <td>
                                         <Link to={`/admin/products?highlight=${item.product_id}`}>
                                           {item.product_name}
@@ -1207,6 +1204,7 @@ const downloadSelected = async () => {
                 <table className="table table-sm">
                   <thead>
                     <tr>
+                      <th>Id</th>
                       <th>Product</th>
                       <th>Variant</th>
                       <th>Qty</th>
@@ -1217,6 +1215,7 @@ const downloadSelected = async () => {
                   <tbody>
                     {detailEntry.items.map((item) => (
                       <tr key={item.id}>
+                      <td>{detailEntry.exit_code}</td>
                         <td>
                           <Link to={`/admin/products?highlight=${item.product_id}`}>{item.product_name}</Link>
                         </td>
@@ -1233,18 +1232,21 @@ const downloadSelected = async () => {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <th colSpan={4} className="text-end">
-                        Total
-                      </th>
-                      <th>
-                        {money(
-                          detailEntry.items.reduce((s, i) => s + i.unit_price * i.quantity, 0)
-                        )}
-                      </th>
-                    </tr>
-                  </tfoot>
+             <tfoot>
+  <tr>
+    <td colSpan={5} className="text-end fw-bold">
+      Total
+    </td>
+    <td className="fw-bold">
+      {money(
+        detailEntry.items.reduce(
+          (s, i) => s + i.unit_price * i.quantity,
+          0
+        )
+      )}
+    </td>
+  </tr>
+</tfoot>
                 </table>
               </div>
             </div>
