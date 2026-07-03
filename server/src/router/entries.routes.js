@@ -1,29 +1,12 @@
-// routes/stockEntries.js
-//
-// Schema (after migration_add_stock_entry_bills.sql):
-//
-// product_variants:    id, product_id, size, color, memory, qty
-// suppliers:            id, name, contact_name, phone, email, address, created_at
-// stock_entry_bills:    id, supplier_id, supplier_name, contact, created_by, created_at
-// stock_entries:        id, product_id, variant_id, bill_id, quantity, created_at
-//                        (bill_id -> stock_entry_bills.id, ON DELETE CASCADE)
-//
-// One "New Stock Entry" submission = ONE bill row + one stock_entries
-// row per product/variant in that submission.
-//
-// Adjust the pool import path to your project.
-
 const express = require("express");
 const router = express.Router();
-const pool = require("../config/db"); // <-- adjust path
+const pool = require("../config/db");
 
 /* ============================================================
-   PRODUCT SEARCH (search-as-you-type, with variants attached)
-   GET /products/search?q=iphone
-   ============================================================ */
+   PRODUCT SEARCH
+============================================================ */
 router.get("/products/search", async (req, res) => {
   const q = (req.query.q || "").trim();
-
   if (!q) return res.json([]);
 
   try {
@@ -50,7 +33,9 @@ router.get("/products/search", async (req, res) => {
 
     const variantsByProduct = {};
     for (const v of variantsResult.rows) {
-      if (!variantsByProduct[v.product_id]) variantsByProduct[v.product_id] = [];
+      if (!variantsByProduct[v.product_id]) {
+        variantsByProduct[v.product_id] = [];
+      }
       variantsByProduct[v.product_id].push(v);
     }
 
@@ -67,9 +52,8 @@ router.get("/products/search", async (req, res) => {
 });
 
 /* ============================================================
-   SUPPLIER SEARCH (search-as-you-type)
-   GET /suppliers/search?q=tech
-   ============================================================ */
+   SUPPLIER SEARCH
+============================================================ */
 router.get("/suppliers/search", async (req, res) => {
   const q = (req.query.q || "").trim();
   if (!q) return res.json([]);
@@ -83,6 +67,7 @@ router.get("/suppliers/search", async (req, res) => {
        LIMIT 10`,
       [`%${q}%`]
     );
+
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -91,9 +76,8 @@ router.get("/suppliers/search", async (req, res) => {
 });
 
 /* ============================================================
-   LIST STOCK ENTRY BILLS (paginated, one row per bill)
-   GET /stock-entries?page=1&limit=12&search=&date=YYYY-MM-DD
-   ============================================================ */
+   LIST STOCK ENTRY BILLS (FIXED ent_id HERE)
+============================================================ */
 router.get("/stock-entries", async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.max(1, parseInt(req.query.limit) || 12);
@@ -106,7 +90,6 @@ router.get("/stock-entries", async (req, res) => {
   const searchParam = search ? `%${search}%` : null;
 
   try {
-    // ================= MATCHED IDS =================
     const matchedSql = `
       SELECT DISTINCT b.id
       FROM stock_entry_bills b
@@ -118,7 +101,6 @@ router.get("/stock-entries", async (req, res) => {
         AND ($3::date IS NULL OR b.created_at::date <= $3::date)
     `;
 
-    // ================= COUNT =================
     const countResult = await pool.query(
       `SELECT COUNT(*) FROM (${matchedSql}) m`,
       [searchParam, startDate, endDate]
@@ -126,19 +108,25 @@ router.get("/stock-entries", async (req, res) => {
 
     const total = parseInt(countResult.rows[0].count, 10);
 
-    // ================= DATA =================
+    // ✅ FIX IS HERE: added ent_id aggregation
     const dataResult = await pool.query(
       `WITH matched AS (${matchedSql})
        SELECT
          b.id AS bill_id,
+
+         -- ✅ FIX: include ent_id (all items in bill)
+         STRING_AGG(DISTINCT se.ent_id::text, ', ') AS ent_id,
+
          b.supplier_id,
          b.supplier_name,
          b.contact,
          b.created_by,
          b.created_at,
+
          COUNT(se.id) AS item_count,
          SUM(se.quantity) AS total_quantity,
          STRING_AGG(DISTINCT p.name, ', ') AS product_names
+
        FROM stock_entry_bills b
        JOIN stock_entries se ON se.bill_id = b.id
        JOIN products p ON p.id = se.product_id
@@ -160,17 +148,25 @@ router.get("/stock-entries", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch stock entries" });
   }
 });
+
 /* ============================================================
-   SINGLE BILL DETAIL (bill info + every item inside it)
-   GET /stock-entries/:id
-   ============================================================ */
+   SINGLE BILL DETAIL
+============================================================ */
 router.get("/stock-entries/:id", async (req, res) => {
   try {
     const billResult = await pool.query(
       `SELECT
-         b.id, b.supplier_id, b.supplier_name, b.contact, b.created_by, b.created_at,
-         s.name AS supplier_table_name, s.contact_name AS supplier_contact_name,
-         s.phone AS supplier_phone, s.email AS supplier_email, s.address AS supplier_address
+         b.id,
+         b.supplier_id,
+         b.supplier_name,
+         b.contact,
+         b.created_by,
+         b.created_at,
+         s.name AS supplier_table_name,
+         s.contact_name AS supplier_contact_name,
+         s.phone AS supplier_phone,
+         s.email AS supplier_email,
+         s.address AS supplier_address
        FROM stock_entry_bills b
        LEFT JOIN suppliers s ON s.id = b.supplier_id
        WHERE b.id = $1`,
@@ -183,9 +179,16 @@ router.get("/stock-entries/:id", async (req, res) => {
 
     const itemsResult = await pool.query(
       `SELECT
-         se.id, se.product_id, se.variant_id, se.quantity,
-         p.name AS product_name, p.description AS product_description,
-         pv.size, pv.color, pv.memory
+         se.id,
+         se.ent_id,
+         se.product_id,
+         se.variant_id,
+         se.quantity,
+         p.name AS product_name,
+         p.description AS product_description,
+         pv.size,
+         pv.color,
+         pv.memory
        FROM stock_entries se
        JOIN products p ON p.id = se.product_id
        LEFT JOIN product_variants pv ON pv.id = se.variant_id
@@ -205,16 +208,8 @@ router.get("/stock-entries/:id", async (req, res) => {
 });
 
 /* ============================================================
-   CREATE ONE BILL WITH ONE OR MANY ITEMS
-   POST /stock-entries
-   body: {
-     supplier_id: number | null,
-     supplier_name: string,
-     contact: string,
-     created_by: number,
-     items: [{ product_id, variant_id: number | null, quantity }]
-   }
-   ============================================================ */
+   CREATE BILL
+============================================================ */
 router.post("/stock-entries", async (req, res) => {
   const { supplier_id, supplier_name, contact, created_by, items } = req.body;
 
@@ -224,21 +219,14 @@ router.post("/stock-entries", async (req, res) => {
     });
   }
 
-  for (const item of items) {
-    if (!item.product_id || !item.quantity || Number(item.quantity) <= 0) {
-      return res.status(400).json({
-        message: "Each item needs a valid product_id and quantity > 0",
-      });
-    }
-  }
-
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
     const billResult = await client.query(
-      `INSERT INTO stock_entry_bills (supplier_id, supplier_name, contact, created_by, created_at)
+      `INSERT INTO stock_entry_bills
+       (supplier_id, supplier_name, contact, created_by, created_at)
        VALUES ($1, $2, $3, $4, NOW())
        RETURNING *`,
       [supplier_id || null, supplier_name, contact || null, created_by || null]
@@ -250,10 +238,11 @@ router.post("/stock-entries", async (req, res) => {
     for (const item of items) {
       const result = await client.query(
         `INSERT INTO stock_entries
-           (product_id, variant_id, bill_id, supplier_id, supplier_name, contact, quantity, created_by, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         (ent_id, product_id, variant_id, bill_id, supplier_id, supplier_name, contact, quantity, created_by, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
          RETURNING *`,
         [
+          item.ent_id || null,
           item.product_id,
           item.variant_id || null,
           bill.id,
@@ -281,6 +270,7 @@ router.post("/stock-entries", async (req, res) => {
     }
 
     await client.query("COMMIT");
+
     res.status(201).json({ ...bill, items: insertedItems });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -292,54 +282,20 @@ router.post("/stock-entries", async (req, res) => {
 });
 
 /* ============================================================
-   DELETE A WHOLE BILL (cascades to its items)
-   DELETE /stock-entries/:id
-   ============================================================ */
+   DELETE BILL
+============================================================ */
 router.delete("/stock-entries/:id", async (req, res) => {
   try {
-    await pool.query(`DELETE FROM stock_entry_bills WHERE id = $1`, [req.params.id]);
+    await pool.query(
+      `DELETE FROM stock_entry_bills WHERE id = $1`,
+      [req.params.id]
+    );
+
     res.json({ message: "Bill deleted" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to delete bill" });
   }
 });
-router.post("/stock-entries/export", async (req, res) => {
-  const { ids } = req.body;
 
-  try {
-    const result = await pool.query(
-      `
-      SELECT
-        b.id AS bill_id,
-        b.supplier_name,
-        b.created_at,
-        SUM(se.quantity) AS total_quantity
-      FROM stock_entry_bills b
-      JOIN stock_entries se ON se.bill_id = b.id
-      WHERE ($1::int[] IS NULL OR b.id = ANY($1))
-      GROUP BY b.id
-      ORDER BY b.id DESC
-      `,
-      [ids?.length ? ids : null]
-    );
-
-    let csv = "Bill ID,Supplier,Date,Total Qty\n";
-
-    result.rows.forEach((r) => {
-      csv += `${r.bill_id},${r.supplier_name},${r.created_at},${r.total_quantity}\n`;
-    });
-
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", "attachment; filename=stock.csv");
-    res.send(csv);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Export failed" });
-  }
-});
 module.exports = router;
-
-// In your main server file:
-//   const stockEntryRoutes = require("./routes/stockEntries");
-//   app.use("/api", stockEntryRoutes);

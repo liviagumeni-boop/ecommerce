@@ -37,6 +37,7 @@ type Supplier = {
 // aggregates across every product in that bill.
 type BillRow = {
   bill_id: number;
+    ent_id: number | string; 
   supplier_id: number | null;
   supplier_name: string;
   contact: string | null;
@@ -49,6 +50,7 @@ type BillRow = {
 
 type BillItem = {
   id: number;
+  ent_id: number | string; // ✅ ADD THIS
   product_id: number;
   variant_id: number | null;
   quantity: number;
@@ -58,7 +60,6 @@ type BillItem = {
   color: string | null;
   memory: string | null;
 };
-
 type BillDetail = {
   id: number;
   supplier_id: number | null;
@@ -615,38 +616,40 @@ const downloadSelected = async () => {
       return;
     }
 
-    // fetch full details for each bill (same as eye modal)
     const responses = await Promise.all(
       ids.map((id) => api.get(`/stock-entries/${id}`))
     );
 
-    const bills: BillDetail[] = responses.map((r) => r.data);
+    const bills = responses.map((r) => r.data);
 
-    // flatten into richer CSV rows (matching modal data)
     const rows: any[] = [];
 
     bills.forEach((bill) => {
-      bill.items.forEach((item) => {
+      bill.items.forEach((item: any) => {
         rows.push({
           BillID: bill.id,
+          ENT_ID: item.ent_id || bill.ent_id || "",   // 🔥 FIX HERE
           Date: new Date(bill.created_at).toLocaleString(),
           Supplier: bill.supplier_name,
           Contact: bill.contact || "",
+
           LinkedSupplier: bill.supplier_table_name || "",
           SupplierContactPerson: bill.supplier_contact_name || "",
           SupplierPhone: bill.supplier_phone || "",
           SupplierEmail: bill.supplier_email || "",
           SupplierAddress: bill.supplier_address || "",
+
           Product: item.product_name,
-          Variant: item.size || item.color || item.memory
-            ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
-            : "",
+          Variant:
+            item.size || item.color || item.memory
+              ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
+              : "",
+
           Quantity: item.quantity,
         });
       });
     });
 
-    // convert to CSV
     const headers = Object.keys(rows[0] || {});
     const csv = [
       headers.join(","),
@@ -660,15 +663,13 @@ const downloadSelected = async () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "stock-entries-detailed.csv";
-    document.body.appendChild(a);
+    a.download = "stock-entries-full-export.csv";
     a.click();
-    a.remove();
 
     window.URL.revokeObjectURL(url);
   } catch (err) {
     console.log(err);
-    showToast("Failed to download detailed export", "error" as any);
+    showToast("Export failed", "error" as any);
   }
 };
 useEffect(() => {
@@ -740,6 +741,7 @@ useEffect(() => {
   />
 </th>
                     <th>Id</th>
+                     
                     <th>Date</th>
                     <th>Products</th>
                     <th>Items</th>
@@ -763,6 +765,7 @@ useEffect(() => {
   />
 </td>
                         <td>ENT#{r.bill_id}</td>
+                        
                         <td>{new Date(r.created_at).toLocaleDateString()}</td>
                         <td style={{ maxWidth: 260 }} className="text-truncate">
                           {r.product_names}
@@ -1388,6 +1391,7 @@ useEffect(() => {
                 <table className="table table-sm">
                   <thead>
                     <tr>
+                      <th>Id</th>
                       <th>Product</th>
                       <th>Variant</th>
                       <th>Qty</th>
@@ -1396,6 +1400,7 @@ useEffect(() => {
                   <tbody>
                     {detailEntry.items.map((item) => (
                       <tr key={item.id}>
+                         <td>{item.ent_id || "—"}</td>
                         <td>{item.product_name}</td>
                         <td>
                           {item.size || item.color || item.memory
