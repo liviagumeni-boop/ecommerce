@@ -12,6 +12,7 @@ import {
   FaLock,
   FaBell,
   FaSignOutAlt,
+  FaCreditCard,
 } from "react-icons/fa";
 
 const Settings: React.FC = () => {
@@ -60,6 +61,58 @@ const { showToast } = useToast();
       console.error(err);
     }
   };
+
+const [secretKey, setSecretKey] = useState("");
+const [publishableKey, setPublishableKey] = useState("");
+const [webhookSecret, setWebhookSecret] = useState("");
+const [maskedSecret, setMaskedSecret] = useState<string | null>(null);
+const [maskedWebhook, setMaskedWebhook] = useState<string | null>(null);
+const [savingStripe, setSavingStripe] = useState(false);
+
+useEffect(() => {
+  const fetchStripe = async () => {
+    try {
+      const res = await api.get("/admin/settings/stripe");
+      setMaskedSecret(res.data.secretKey);
+      setPublishableKey(res.data.publishableKey || "");
+      setMaskedWebhook(res.data.webhookSecret);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  fetchStripe();
+}, []);
+
+const handleSaveStripe = async () => {
+  if (!secretKey && !webhookSecret && !publishableKey) {
+    showToast("Nothing to save", "error");
+    return;
+  }
+  setSavingStripe(true);
+  try {
+    const payload: Record<string, string> = {};
+    if (publishableKey) payload.publishableKey = publishableKey;
+    if (secretKey) payload.secretKey = secretKey;
+    if (webhookSecret) payload.webhookSecret = webhookSecret;
+
+    await api.post("/admin/settings/stripe", payload);
+    showToast("Stripe settings saved", "success");
+
+    // clear sensitive inputs, refresh masked display
+    setSecretKey("");
+    setWebhookSecret("");
+    const res = await api.get("/admin/settings/stripe");
+    setMaskedSecret(res.data.secretKey);
+    setMaskedWebhook(res.data.webhookSecret);
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to save Stripe settings", "error");
+  } finally {
+    setSavingStripe(false);
+  }
+};
+
+
 const handleLogout = () => {
   // Remove admin auth
   localStorage.removeItem("adminToken");
@@ -148,7 +201,13 @@ const handleLogout = () => {
                     <FaLock className="me-2" />
                     Security
                   </button>
-
+<button
+  className={`list-group-item list-group-item-action ${activeTab === "payments" ? "active" : ""}`}
+  onClick={() => setActiveTab("payments")}
+>
+  <FaCreditCard className="me-2" />
+  Payments
+</button>
                   <button
                     className="list-group-item list-group-item-action text-danger"
                     onClick={handleLogout}
@@ -251,6 +310,54 @@ const handleLogout = () => {
                     </div>
                   </>
                 )}
+
+{activeTab === "payments" && (
+  <>
+    <h5>Stripe</h5>
+
+    <label className="form-label mt-2">Publishable Key</label>
+    <input
+      className="form-control my-1"
+      placeholder="pk_live_..."
+      value={publishableKey}
+      onChange={(e) => setPublishableKey(e.target.value)}
+    />
+
+    <label className="form-label mt-3">Secret Key</label>
+    <input
+      type="password"
+      className="form-control my-1"
+      placeholder={maskedSecret || "Not set"}
+      value={secretKey}
+      onChange={(e) => setSecretKey(e.target.value)}
+    />
+    <small className="text-muted">
+      Leave blank to keep the current key. Enter a new value to replace it.
+    </small>
+
+    <label className="form-label mt-3">Webhook Signing Secret</label>
+    <input
+      type="password"
+      className="form-control my-1"
+      placeholder={maskedWebhook || "Not set"}
+      value={webhookSecret}
+      onChange={(e) => setWebhookSecret(e.target.value)}
+    />
+    <small className="text-muted">
+      Leave blank to keep the current value.
+    </small>
+
+    <button
+      className="btn btn-primary mt-3"
+      onClick={handleSaveStripe}
+      disabled={savingStripe}
+    >
+      {savingStripe ? "Saving..." : "Save Stripe Settings"}
+    </button>
+  </>
+)}
+
+
 
                 {/* SECURITY */}
                 {activeTab === "security" && (

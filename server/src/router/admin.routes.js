@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../config/db");
-
+const { encrypt, decrypt } = require("../utils/crypto");
+const { invalidateStripeCache } = require("../config/stripe");
 const router = express.Router();
 
 /* =========================
@@ -92,5 +93,71 @@ const outOfStock = await pool.query(`
     res.status(500).json({ message: err.message });
   }
 });
+
+router.get("/settings/stripe", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT stripe_secret_key, stripe_publishable_key, stripe_webhook_secret
+       FROM store_settings WHERE id = 1`
+    );
+
+    const row = rows[0];
+    if (!row) {
+      return res.json({ secretKey: null, publishableKey: null, webhookSecret: null });
+    }
+
+    const mask = (val) => (val ? `••••••••${val.slice(-4)}` : null);
+
+    res.json({
+      secretKey: row.stripe_secret_key ? mask(decrypt(row.stripe_secret_key)) : null,
+      publishableKey: row.stripe_publishable_key || null,
+      webhookSecret: row.stripe_webhook_secret ? mask(decrypt(row.stripe_webhook_secret)) : null,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/settings/stripe", async (req, res) => {
+  try {
+    const { secretKey, publishableKey, webhookSecret } = req.body;
+
+    const updates = [];
+    const values = [];
+    let i = 1;
+
+    if (secretKey) {
+      updates.push(`stripe_secret_key = $${i++}`);
+      values.push(encrypt(secretKey));
+    }
+    if (publishableKey) {
+      updates.push(`stripe_publishable_key = $${i++}`);
+      values.push(publishableKey);
+    }
+    if (webhookSecret) {
+      updates.push(`stripe_webhook_secret = $${i++}`);
+      values.push(encrypt(webhookSecret));
+    }
+
+    if (!updates.length) {
+      return res.status(400).json({ message: "No values provided" });
+    }
+
+    values.push(1);
+    await pool.query(
+      `UPDATE store_settings SET ${updates.join(", ")} WHERE id = $${i}`,
+      values
+    );
+
+    invalidateStripeCache();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 module.exports = router;

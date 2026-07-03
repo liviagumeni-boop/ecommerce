@@ -461,8 +461,8 @@ const toggleBrand = (name) => {
                       border: "none",
                       borderRadius: 8,
                       cursor: "pointer",
-                      background: isFav(selectedProduct.id) ? "red" : "#eee",
-                      color: isFav(selectedProduct.id) ? "white" : "black",
+                      background: isFavorite(selectedProduct.id) ? "red" : "#eee",
+                      color: isFavorite(selectedProduct.id) ? "white" : "black",
                     }}
                   >
                     Favorite
