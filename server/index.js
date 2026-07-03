@@ -45,7 +45,11 @@ const storeRoutes = require("./src/router/store.routes");
 const stockEntryRoutes = require("./src/router/entries.routes");
 const exitRoutes = require("./src/router/exit.routes");
 const partiesRoutes = require("./src/router/users.routes");
+const profileRoutes = require("./src/router/profile.routes");
+const favoritesRoutes = require("./src/router/favorites.rotes");
 
+app.use("/api/favorites", favoritesRoutes);
+app.use("/api/users", profileRoutes);
 app.use("/api/parties", partiesRoutes);
 app.use("/api", exitRoutes);
 app.use("/api", stockEntryRoutes);

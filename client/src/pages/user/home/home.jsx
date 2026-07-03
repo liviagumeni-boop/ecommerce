@@ -21,10 +21,12 @@ const carousel = [
 
 function Home() {
   const { addToCart } = useCart();
-  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const { favorites, addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+// remove your local isFav function and just use isFavorite(p.id) everywhere
 const { showToast } = useToast();
   // ── Auth token from OAuth redirect ──────────────────────────────────────
-useEffect(() => {
+
+  useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   const role = params.get("role");
@@ -37,6 +39,9 @@ useEffect(() => {
       localStorage.setItem("user", decodeURIComponent(user));
     }
     window.history.replaceState({}, "", "/");
+
+    window.dispatchEvent(new Event("authChanged")); // 👈 add this
+
     if (role === "admin") {
       window.location.href = "/admin";
     }
@@ -99,10 +104,10 @@ const [tempBrand, setTempBrand] = useState([]);
   }, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  const isFav = (id) => favorites.some((p) => p.id === id);
+
 
 const toggleFav = (product) => {
-  if (isFav(product.id)) {
+  if (isFavorite(product.id)) {
     removeFromFavorites(product.id);
     showToast("Removed from favorites", "warning");
   } else {
@@ -288,7 +293,7 @@ const toggleBrand = (name) => {
                 >
                   <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 10 }}>
                     <FaHeart
-                      style={{ cursor: "pointer", color: isFav(p.id) ? "red" : "gray" }}
+                      style={{ cursor: "pointer", color: isFavorite(p.id) ? "red" : "gray" }}
                       onClick={() => toggleFav(p)}
                     />
                   </div>

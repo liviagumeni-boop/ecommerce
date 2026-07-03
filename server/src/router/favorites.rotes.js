@@ -1,19 +1,33 @@
 const express = require("express");
+const router = express.Router();
 const pool = require("../config/db");
 
-const router = express.Router();
 
-
-// GET ALL FAVORITES
-router.get("/", async (req, res) => {
+// ===============================
+// GET USER FAVORITES
+// ===============================
+router.get("/me", async (req, res) => {
   try {
     const userId = req.headers.userid;
 
+    if (!userId) {
+      return res.status(400).json({ message: "Missing userId" });
+    }
+
     const result = await pool.query(
       `
-      SELECT p.*
+      SELECT 
+        p.id,
+        p.name,
+        p.price,
+        p.sale_price,
+        p.image,
+        b.name AS brand_name,
+        c.name AS category_name
       FROM favorites f
       JOIN products p ON p.id = f.product_id
+      LEFT JOIN brands b ON b.id = p.brand_id
+      LEFT JOIN categories c ON c.id = p.category_id
       WHERE f.user_id = $1
       `,
       [userId]
@@ -21,50 +35,63 @@ router.get("/", async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("GET favorites error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
-
-
-// ADD FAVORITE
-router.post("/", async (req, res) => {
+// ===============================
+// ADD TO FAVORITES
+// ===============================
+router.post("/me", async (req, res) => {
   try {
     const userId = req.headers.userid;
     const { productId } = req.body;
 
+    if (!userId || !productId) {
+      return res.status(400).json({ message: "Missing data" });
+    }
+
     await pool.query(
       `
-      INSERT INTO favorites(user_id, product_id)
-      VALUES($1,$2)
-      ON CONFLICT DO NOTHING
+      INSERT INTO favorites (user_id, product_id)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, product_id) DO NOTHING
       `,
       [userId, productId]
     );
 
-    res.json({ message: "Added" });
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("ADD favorite error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
 
-// REMOVE FAVORITE
-router.delete("/:id", async (req, res) => {
+// ===============================
+// REMOVE FROM FAVORITES
+// ===============================
+router.delete("/me/:productId", async (req, res) => {
   try {
     const userId = req.headers.userid;
+    const productId = req.params.productId;
+
+    if (!userId || !productId) {
+      return res.status(400).json({ message: "Missing data" });
+    }
 
     await pool.query(
       `
       DELETE FROM favorites
-      WHERE user_id=$1
-      AND product_id=$2
+      WHERE user_id = $1 AND product_id = $2
       `,
-      [userId, req.params.id]
+      [userId, productId]
     );
 
-    res.json({ message: "Removed" });
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("DELETE favorite error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
