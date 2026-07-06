@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("./src/config/db");
 const cors = require("cors");
 const passport = require("passport");
+const { initGoogleStrategy } = require("./src/services/google.service");
 require("dotenv").config();
 
 const app = express();
@@ -83,6 +84,16 @@ app.get("/", async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
+(async () => {
+  try {
+    console.log("Initializing Google strategy...");
+    await initGoogleStrategy();
+    console.log("✅ Google strategy initialized");
+  } catch (err) {
+    console.error("❌ Google strategy not initialized:", err.message);
+    console.error("Server will still start, but Google login will return 503 until this is fixed.");
+  }
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+})();
