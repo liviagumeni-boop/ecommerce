@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-const { decrypt } = require("../utils/crypto"); // adjust path if your decrypt() lives elsewhere
+const { decrypt } = require("../utils/crypto");
 
 let cachedCreds = null;
 let cachedAt = 0;
@@ -15,8 +15,6 @@ async function getGoogleCredentials() {
      FROM store_settings
      WHERE id = 1`
   );
-
-  console.log("Google credentials from DB:", rows);
 
   const row = rows[0];
 
@@ -34,4 +32,11 @@ async function getGoogleCredentials() {
   return cachedCreds;
 }
 
-module.exports = { getGoogleCredentials };
+// NEW: clears the cache so the next getGoogleCredentials() call
+// re-reads fresh values from the DB instead of serving stale ones.
+function invalidateGoogleCache() {
+  cachedCreds = null;
+  cachedAt = 0;
+}
+
+module.exports = { getGoogleCredentials, invalidateGoogleCache };
