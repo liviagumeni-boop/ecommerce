@@ -8,4 +8,4 @@ const Loading: React.FC<LoadingProps> = ({ message = "Loading..." }) => {
   return <div className="p-4">{message}</div>;
 };
 
-export default Loading;
+export default Loading;   
