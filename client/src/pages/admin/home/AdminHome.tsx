@@ -5,6 +5,7 @@ import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import SalesChart from "../../../componets/ui/SalesChart";
 import Table from "../../../componets/ui/Table";
+import Loading from "../../../componets/ui/loading";
 
 // ================= TYPES =================
 type OrdersStatus = {
@@ -36,37 +37,41 @@ type DashboardData = {
   users: User[];
   outOfStock: number;
 };
+
 let dashboardCache: DashboardData | null = null;
+
 export default function AdminHome() {
-const hasLoadedOnce = useRef(false);
+  const hasLoadedOnce = useRef(false);
+
   // ================= STATE =================
-const [dashboard, setDashboard] = useState<DashboardData | null>(
-  dashboardCache
-);
-const [loading, setLoading] = useState(!dashboardCache);
-const hasFetched = useRef(false);
-useEffect(() => {
-  if (dashboardCache) return;
+  const [dashboard, setDashboard] = useState<DashboardData | null>(
+    dashboardCache
+  );
+  const [loading, setLoading] = useState(!dashboardCache);
+  const hasFetched = useRef(false);
 
-  const fetchDashboard = async () => {
-    try {
-      const res = await api.get<DashboardData>("/admin/dashboard");
+  useEffect(() => {
+    if (dashboardCache) return;
 
-      dashboardCache = res.data; // 👈 store globally
-      setDashboard(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchDashboard = async () => {
+      try {
+        const res = await api.get<DashboardData>("/admin/dashboard");
 
-  fetchDashboard();
-}, []);
+        dashboardCache = res.data; // 👈 store globally
+        setDashboard(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-if (loading || !dashboard) {
-  return <div className="p-4">Loading...</div>;
-}
+    fetchDashboard();
+  }, []);
+
+  if (loading || !dashboard) {
+    return <Loading />;
+  }
 
   // ================= FINANCE =================
   const finance = {
