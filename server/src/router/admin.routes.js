@@ -1,9 +1,11 @@
 const express = require("express");
+const bcrypt = require("bcryptjs");
 const pool = require("../config/db");
 const { encrypt, decrypt } = require("../utils/crypto");
 const { invalidateStripeCache } = require("../config/stripe");
 const { invalidateGoogleCache } = require("../config/google");
 const { initGoogleStrategy } = require("../services/google.service"); 
+const auth = require("../middleware/auth"); // <-- your JWT auth middleware, adjust path if different
 const router = express.Router();
 
 /* =========================
@@ -221,4 +223,59 @@ router.post("/settings/google", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+/* =========================
+   CHANGE PASSWORD
+========================= */
+router.put("/change-password", auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user?.id; // <-- from your auth middleware's decoded JWT
+
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current and new password are required" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT password FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    const sameAsOld = await bcrypt.compare(newPassword, user.password);
+    if (sameAsOld) {
+      return res.status(400).json({ message: "New password must be different from current password" });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      `UPDATE users SET password = $1 WHERE id = $2`,
+      [hashed, userId]
+    );
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
