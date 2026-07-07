@@ -5,7 +5,14 @@ type LoadingProps = {
 };
 
 const Loading: React.FC<LoadingProps> = ({ message = "Loading..." }) => {
-  return <div className="p-4">{message}</div>;
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
+        <p className="text-lg font-medium text-gray-700">{message}</p>
+      </div>
+    </div>
+  );
 };
 
 export default Loading;
