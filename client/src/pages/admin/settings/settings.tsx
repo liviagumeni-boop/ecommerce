@@ -182,7 +182,7 @@ const handleChangePassword = async () => {
 
   setSavingPassword(true);
   try {
-    await api.put("/change-password", {
+    await api.put("/admin/change-password", {
       currentPassword,
       newPassword,
     });
