@@ -79,7 +79,7 @@ export default function AdminHome() {
     yesterday: { total: 900, cash: 400, card: 500 },
     thisMonth: { total: 14000, cash: 8000, card: 6000 },
     lastMonth: { total: 12500, cash: 7000, card: 5500 },
-    revenue: dashboard.revenue || 0,   
+    revenue: dashboard.revenue || 0,
   };
 
   // ================= SAFE DATA =================
