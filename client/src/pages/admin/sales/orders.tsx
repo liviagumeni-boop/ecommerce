@@ -3,7 +3,8 @@ import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
-
+import TableFilters from "../../../componets/ui/TableFilters";
+import DateRangeFilter from "../../../componets/common/datarange";
 /* ================= TYPES ================= */
 type Order = {
   id: number;
@@ -23,13 +24,20 @@ const Orders: React.FC = () => {
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
 
   /* ================= FILTERS ================= */
-  const [filters, setFilters] = useState({
-    searchId: "",
-    searchName: "",
-    date: "",
-    status: "",
-  });
-
+const [filters, setFilters] = useState({
+  searchId: "",
+  searchName: "",
+  date: "",
+  startDate: "",
+  endDate: "",
+  status: "",
+});
+const updateFilter = (key: string, value: string) => {
+  setFilters((prev) => ({
+    ...prev,
+    [key]: value,
+  }));
+};
   /* ================= PAGINATION ================= */
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -98,10 +106,13 @@ const Orders: React.FC = () => {
         .toLowerCase()
         .includes(filters.searchName.toLowerCase());
 
-    const matchDate =
-      filters.date === "" ||
-      new Date(o.created_at).toISOString().split("T")[0] ===
-        filters.date;
+  const orderDate = new Date(o.created_at)
+  .toISOString()
+  .split("T")[0];
+
+const matchDate =
+  (!filters.startDate || orderDate >= filters.startDate) &&
+  (!filters.endDate || orderDate <= filters.endDate);
 
   const matchStatus =
   filters.status === "" ||
@@ -197,66 +208,64 @@ const Orders: React.FC = () => {
         <div className="p-4 bg-light min-vh-100">
 
           {/* ================= FILTERS ================= */}
-          <div className="d-flex flex-wrap gap-2 mb-3">
-
-            <input
-              className="form-control"
-              style={{ maxWidth: 160 }}
-              placeholder="Search ID..."
-              value={filters.searchId}
-              onChange={(e) =>
-                setFilters({ ...filters, searchId: e.target.value })
-              }
-            />
-
-            <input
-              className="form-control"
-              style={{ maxWidth: 200 }}
-              placeholder="Client name..."
-              value={filters.searchName}
-              onChange={(e) =>
-                setFilters({ ...filters, searchName: e.target.value })
-              }
-            />
-
-            <input
-              type="date"
-              className="form-control"
-              style={{ maxWidth: 180 }}
-              value={filters.date}
-              onChange={(e) =>
-                setFilters({ ...filters, date: e.target.value })
-              }
-            />
-
-            <select
-              className="form-control"
-              style={{ maxWidth: 160 }}
-              value={filters.status}
-              onChange={(e) =>
-                setFilters({ ...filters, status: e.target.value })
-              }
-            >
-              <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="delivered">Delivered</option>
-            </select>
-
-            <button
-              className="btn btn-outline-secondary"
-              onClick={() =>
-                setFilters({
-                  searchId: "",
-                  searchName: "",
-                  date: "",
-                  status: "",
-                })
-              }
-            >
-              Reset
-            </button>
-          </div>
-
+    <TableFilters
+  values={filters}
+  onChange={(key, value) =>
+    setFilters({
+      ...filters,
+      [key]: value,
+    })
+  }
+onReset={() =>
+  setFilters({
+    searchId: "",
+    searchName: "",
+    date: "",
+    startDate: "",
+    endDate: "",
+    status: "",
+  })
+}
+  fields={[
+    {
+      type: "search",
+      key: "searchId",
+      placeholder: "Search ID...",
+    },
+    {
+      type: "search",
+      key: "searchName",
+      placeholder: "Client name...",
+    },
+    {
+      type: "select",
+      key: "status",
+      placeholder: "All Status",
+      options: [
+        {
+          label: "Pending",
+          value: "pending",
+        },
+        {
+          label: "Delivered",
+          value: "delivered",
+        },
+      ],
+    },
+  ]}
+  extra={
+    <DateRangeFilter
+      startDate={filters.date}
+      endDate={filters.date}
+     onChange={(start: string, _end: string) =>
+  setFilters({
+    ...filters,
+    date: start || "",
+  })
+}
+    />
+  }
+/>
           {/* ================= TABLE ================= */}
           <div className="card shadow-sm border-0">
             <div className="table-responsive">

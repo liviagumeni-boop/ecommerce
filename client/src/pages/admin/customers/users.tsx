@@ -4,7 +4,7 @@ import AdminHeader from "../../../layout/headeradmin";
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
 import { FaEye, FaTrash, FaEdit } from "react-icons/fa";
-
+import TableFilters, { FilterField } from "../../../componets/ui/TableFilters";
 /* ================= TYPES ================= */
 
 type PartyType = "supplier" | "customer";
@@ -28,7 +28,22 @@ const partyTypeBadge = (role: PartyType) =>
   ) : (
     <span className="badge bg-info text-dark">Supplier</span>
   );
-
+const PARTY_FILTER_FIELDS: FilterField[] = [
+  {
+    type: "search",
+    key: "search",
+    placeholder: "Search name / phone / email...",
+  },
+  {
+    type: "select",
+    key: "typeFilter",
+    placeholder: "All",
+    options: [
+      { label: "Customers", value: "customer" },
+      { label: "Suppliers", value: "supplier" },
+    ],
+  },
+];
 // "C" for customer, "S" for supplier -> e.g. C000102 / S000007
 const partyCode = (role: PartyType, id: number) => {
   const prefix = role === "customer" ? "C" : "S";
@@ -56,7 +71,10 @@ const Parties: React.FC = () => {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | PartyType>("all");
+ const [filters, setFilters] = useState({
+  search: "",
+  typeFilter: "",
+});
 
   /* ================= ADD / EDIT MODAL STATE ================= */
   const [showModal, setShowModal] = useState(false);
@@ -94,12 +112,13 @@ const Parties: React.FC = () => {
   const fetchParties = async () => {
     try {
       const res = await api.get("/parties", {
-        params: {
-          page,
-          limit,
-          search,
-          role: typeFilter === "all" ? undefined : typeFilter,
-        },
+        
+         params: {
+    page,
+    limit,
+    search: filters.search,
+    role: filters.typeFilter || undefined,
+},
       });
       setRows(res.data.data);
       setTotalPages(res.data.totalPages);
@@ -112,7 +131,7 @@ const Parties: React.FC = () => {
   useEffect(() => {
     fetchParties();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, typeFilter]);
+}, [page, filters]);
 
   /* ================= CLICK OUTSIDE ================= */
   useEffect(() => {
@@ -222,8 +241,8 @@ const Parties: React.FC = () => {
         "/parties/export",
         {
           ids,
-          search: search || null,
-          role: typeFilter === "all" ? null : typeFilter,
+          search: filters.search || null,
+role: filters.typeFilter || null,
         },
         { responseType: "blob" }
       );
@@ -259,49 +278,32 @@ const Parties: React.FC = () => {
 
         <div className="p-4 bg-light min-vh-100">
           {/* ================= TOP BAR / FILTERS ================= */}
-          <div className="d-flex flex-wrap gap-2 align-items-center mb-4">
-            <input
-              className="form-control"
-              style={{ maxWidth: 240 }}
-              placeholder="Search name / phone / email..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-
-            <select
-              className="form-control"
-              style={{ maxWidth: 170 }}
-              value={typeFilter}
-              onChange={(e) => {
-                setTypeFilter(e.target.value as "all" | PartyType);
-                setPage(1);
-              }}
-            >
-              <option value="all">All</option>
-              <option value="customer">Customers</option>
-              <option value="supplier">Suppliers</option>
-            </select>
-
-            {(search || typeFilter !== "all") && (
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => {
-                  setSearch("");
-                  setTypeFilter("all");
-                  setPage(1);
-                }}
-              >
-                Clear
-              </button>
-            )}
-
-            <button className="btn btn-primary ms-auto" onClick={openAddModal}>
-              + New Customer / Supplier
-            </button>
-          </div>
+         <TableFilters
+    values={filters}
+    onChange={(key, value) => {
+        setFilters((prev) => ({
+            ...prev,
+            [key]: value,
+        }));
+        setPage(1);
+    }}
+    onReset={() => {
+        setFilters({
+            search: "",
+            typeFilter: "",
+        });
+        setPage(1);
+    }}
+    fields={PARTY_FILTER_FIELDS}
+    actions={
+        <button
+            className="btn btn-primary"
+            onClick={openAddModal}
+        >
+            + New Customer / Supplier
+        </button>
+    }
+/>
 
           {/* ================= TABLE (customers + suppliers together) ================= */}
           <div className="card shadow-sm border-0">

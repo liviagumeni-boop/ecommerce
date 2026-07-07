@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
+import TableFilters, { FilterField } from "../../../componets/ui/TableFilters";
 import DateRangeFilter from "../../../componets/common/datarange";
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
@@ -46,7 +47,7 @@ type ExitType = "sale" | "return";
 type ExitRow = {
   exit_id: number;
   party_id: number | null;
-    exit_code: string; 
+  exit_code: string;
   party_name: string;
   party_type: PartyType;
   contact: string | null;
@@ -61,7 +62,7 @@ type ExitRow = {
 
 type ExitItem = {
   id: number;
-   exit_code: string; 
+  exit_code: string;
   product_id: number;
   variant_id: number | null;
   quantity: number;
@@ -74,7 +75,7 @@ type ExitItem = {
 
 type ExitDetail = {
   id: number;
-    exit_code: string; 
+  exit_code: string;
   party_id: number | null;
   party_name: string;
   party_type: PartyType;
@@ -127,6 +128,32 @@ const exitTypeBadge = (type: ExitType) =>
 const money = (n: number) =>
   (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/* ================= FILTER FIELDS ================= */
+// Product search, party search, and the sale/return type select are all
+// plain TableFilters fields. The date range is handled separately via
+// DateRangeFilter, passed in through the `extra` slot.
+const EXIT_FILTER_FIELDS: FilterField[] = [
+  {
+    type: "search",
+    key: "productSearch",
+    placeholder: "Search product...",
+  },
+  {
+    type: "search",
+    key: "partySearch",
+    placeholder: "Search customer / supplier...",
+  },
+  {
+    type: "select",
+    key: "typeFilter",
+    placeholder: "All types",
+    options: [
+      { label: "Sale", value: "sale" },
+      { label: "Return to Supplier", value: "return" },
+    ],
+  },
+];
+
 const Exits: React.FC = () => {
   const { showToast } = useToast();
 
@@ -136,12 +163,15 @@ const Exits: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const limit = 12;
 
-  // Filters
-  const [productSearch, setProductSearch] = useState("");
-  const [partySearch, setPartySearch] = useState("");
+  // Generic filter values keyed by field.key — this is what TableFilters reads/writes.
+  // typeFilter is kept as "" | "sale" | "return" here; "" means "all types".
+  const [filters, setFilters] = useState<Record<string, any>>({
+    productSearch: "",
+    partySearch: "",
+    typeFilter: "",
+  });
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | ExitType>("all");
 
   /* ================= EXPANDED BILL (inline items) ================= */
   const [expandedExitId, setExpandedExitId] = useState<number | null>(null);
@@ -199,11 +229,11 @@ const Exits: React.FC = () => {
         params: {
           page,
           limit,
-          product: productSearch,
-          party: partySearch,
+          product: filters.productSearch,
+          party: filters.partySearch,
           startDate,
           endDate,
-          type: typeFilter === "all" ? undefined : typeFilter,
+          type: filters.typeFilter === "" ? undefined : filters.typeFilter,
         },
       });
       setRows(res.data.data);
@@ -217,7 +247,7 @@ const Exits: React.FC = () => {
   useEffect(() => {
     fetchExits();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, productSearch, partySearch, startDate, endDate, typeFilter]);
+  }, [page, filters, startDate, endDate]);
 
   /* ================= PRODUCT SEARCH (debounced) ================= */
   useEffect(() => {
@@ -335,15 +365,13 @@ const Exits: React.FC = () => {
       return;
     }
 
-    const price = Number(p.sale_price ?? 0);
-
     setDraftItems((prev) => [
       ...prev,
       {
         product: p,
         variantQty: {},
         qty: 1,
-    unitPrice: Number(p.sale_price ?? 0) // price sourced from the product record
+        unitPrice: Number(p.sale_price ?? 0), // price sourced from the product record
       },
     ]);
 
@@ -518,83 +546,82 @@ const Exits: React.FC = () => {
   };
 
   /* ================= DOWNLOAD SELECTED ================= */
-const downloadSelected = async () => {
-  if (selectedExits.size === 0) {
-    showToast("Select at least one exit to download", "warning" as any);
-    return;
-  }
-
-  try {
-    const ids = Array.from(selectedExits);
-
-    // 1. fetch full modal-style details (same as Eye modal)
-    const responses = await Promise.all(
-      ids.map((id) => api.get(`/stock-exits/${id}`))
-    );
-
-    const exits: ExitDetail[] = responses.map((r) => r.data);
-
-    // 2. flatten into CSV rows (same structure as modal table)
-    const rows: any[] = [];
-
-    exits.forEach((exit) => {
-      exit.items.forEach((item) => {
-        rows.push({
-          ExitID: exit.id,
-          ExitCode: exit.exit_code, 
-          Date: new Date(exit.created_at).toLocaleString(),
-
-
-          Contact: exit.contact || "",
-          ContactPerson: exit.party_contact_name || "",
-          Phone: exit.party_phone || "",
-          Email: exit.party_email || "",
-          Address: exit.party_address || "",
-
-          Product: item.product_name,
-          Variant: item.size || item.color || item.memory
-            ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
-            : "",
-
-          Quantity: item.quantity,
-          UnitPrice: item.unit_price,
-          LineTotal: item.unit_price * item.quantity,
-        });
-      });
-    });
-
-    // 3. CSV build
-    if (rows.length === 0) {
-      showToast("Nothing to export", "warning" as any);
+  const downloadSelected = async () => {
+    if (selectedExits.size === 0) {
+      showToast("Select at least one exit to download", "warning" as any);
       return;
     }
 
-    const headers = Object.keys(rows[0]);
+    try {
+      const ids = Array.from(selectedExits);
 
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) =>
-        headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
-      ),
-    ].join("\n");
+      // 1. fetch full modal-style details (same as Eye modal)
+      const responses = await Promise.all(
+        ids.map((id) => api.get(`/stock-exits/${id}`))
+      );
 
-    // 4. download file
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
+      const exits: ExitDetail[] = responses.map((r) => r.data);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "stock-exits-detailed.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+      // 2. flatten into CSV rows (same structure as modal table)
+      const rows: any[] = [];
 
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.log(err);
-    showToast("Failed to download detailed export", "error" as any);
-  }
-};
+      exits.forEach((exit) => {
+        exit.items.forEach((item) => {
+          rows.push({
+            ExitID: exit.id,
+            ExitCode: exit.exit_code,
+            Date: new Date(exit.created_at).toLocaleString(),
+
+            Contact: exit.contact || "",
+            ContactPerson: exit.party_contact_name || "",
+            Phone: exit.party_phone || "",
+            Email: exit.party_email || "",
+            Address: exit.party_address || "",
+
+            Product: item.product_name,
+            Variant: item.size || item.color || item.memory
+              ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
+              : "",
+
+            Quantity: item.quantity,
+            UnitPrice: item.unit_price,
+            LineTotal: item.unit_price * item.quantity,
+          });
+        });
+      });
+
+      // 3. CSV build
+      if (rows.length === 0) {
+        showToast("Nothing to export", "warning" as any);
+        return;
+      }
+
+      const headers = Object.keys(rows[0]);
+
+      const csv = [
+        headers.join(","),
+        ...rows.map((r) =>
+          headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
+        ),
+      ].join("\n");
+
+      // 4. download file
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "stock-exits-detailed.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.log(err);
+      showToast("Failed to download detailed export", "error" as any);
+    }
+  };
 
   return (
     <div className="d-flex">
@@ -605,73 +632,36 @@ const downloadSelected = async () => {
 
         <div className="p-4 bg-light min-vh-100">
           {/* ================= TOP BAR / FILTERS ================= */}
-          <div className="d-flex flex-wrap gap-2 align-items-center mb-4">
-            <input
-              className="form-control"
-              style={{ maxWidth: 200 }}
-              placeholder="Search product..."
-              value={productSearch}
-              onChange={(e) => {
-                setProductSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-
-            <input
-              className="form-control"
-              style={{ maxWidth: 200 }}
-              placeholder="Search customer / supplier..."
-              value={partySearch}
-              onChange={(e) => {
-                setPartySearch(e.target.value);
-                setPage(1);
-              }}
-            />
-
-            <select
-              className="form-control"
-              style={{ maxWidth: 170 }}
-              value={typeFilter}
-              onChange={(e) => {
-                setTypeFilter(e.target.value as "all" | ExitType);
-                setPage(1);
-              }}
-            >
-              <option value="all">All types</option>
-              <option value="sale">Sale</option>
-              <option value="return">Return to Supplier</option>
-            </select>
-
-            <DateRangeFilter
-              startDate={startDate}
-              endDate={endDate}
-              onChange={(start: string, end: string) => {
-                setStartDate(start);
-                setEndDate(end);
-                setPage(1);
-              }}
-            />
-
-            {(startDate || endDate || productSearch || partySearch || typeFilter !== "all") && (
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => {
-                  setStartDate("");
-                  setEndDate("");
-                  setProductSearch("");
-                  setPartySearch("");
-                  setTypeFilter("all");
+          <TableFilters
+            values={filters}
+            onChange={(key, value) => {
+              setFilters((prev) => ({ ...prev, [key]: value }));
+              setPage(1);
+            }}
+            onReset={() => {
+              setFilters({ productSearch: "", partySearch: "", typeFilter: "" });
+              setStartDate("");
+              setEndDate("");
+              setPage(1);
+            }}
+            fields={EXIT_FILTER_FIELDS}
+            extra={
+              <DateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(start: string, end: string) => {
+                  setStartDate(start);
+                  setEndDate(end);
                   setPage(1);
                 }}
-              >
-                Clear
+              />
+            }
+            actions={
+              <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+                + New Exit
               </button>
-            )}
-
-            <button className="btn btn-primary ms-auto" onClick={() => setShowModal(true)}>
-              + New Exit
-            </button>
-          </div>
+            }
+          />
 
           {/* ================= TABLE (one row per EXIT BILL) ================= */}
           <div className="card shadow-sm border-0">
@@ -756,7 +746,6 @@ const downloadSelected = async () => {
                               <table className="table table-sm mb-2 mt-2">
                                 <thead>
                                   <tr>
-                                  
                                     <th>Product</th>
                                     <th>Variant</th>
                                     <th>Qty</th>
@@ -767,7 +756,6 @@ const downloadSelected = async () => {
                                 <tbody>
                                   {(expandedItems[r.exit_id] || []).map((item) => (
                                     <tr key={item.id}>
-                                    
                                       <td>
                                         <Link to={`/admin/products?highlight=${item.product_id}`}>
                                           {item.product_name}
@@ -879,70 +867,66 @@ const downloadSelected = async () => {
                   Every product added below will be saved together as a single exit.
                 </p>
 
-            
-
                 {/* PARTY SELECT — shows every customer / supplier, not just search matches */}
-            <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
+                  {/* LEFT */}
+                  <div style={{ flex: 1 }}>
+                    <select
+                      className="form-control"
+                      value={exitType}
+                      onChange={(e) => switchExitType(e.target.value as ExitType)}
+                    >
+                      <option value="sale">Sale (Customer)</option>
+                      <option value="return">Return to Supplier</option>
+                    </select>
+                  </div>
 
-  {/* LEFT */}
-  <div style={{ flex: 1 }}>
-    <select
-      className="form-control"
-      value={exitType}
-      onChange={(e) => switchExitType(e.target.value as ExitType)}
-    >
-      <option value="sale">Sale (Customer)</option>
-      <option value="return">Return to Supplier</option>
-    </select>
-  </div>
+                  {/* RIGHT */}
+                  <div style={{ flex: 1, position: "relative" }}>
+                    <input
+                      className="form-control"
+                      placeholder={
+                        exitType === "sale"
+                          ? "Search existing customer"
+                          : "Search existing supplier"
+                      }
+                      value={partyQuery}
+                      onChange={(e) => {
+                        setPartyQuery(e.target.value);
+                        setPartyName(e.target.value);
+                        setPartyId(null);
+                      }}
+                      onFocus={() =>
+                        partyResults.length > 0 && setShowPartyResults(true)
+                      }
+                    />
 
-  {/* RIGHT */}
-  <div style={{ flex: 1, position: "relative" }}>
-    <input
-      className="form-control"
-      placeholder={
-        exitType === "sale"
-          ? "Search existing customer"
-          : "Search existing supplier"
-      }
-      value={partyQuery}
-      onChange={(e) => {
-        setPartyQuery(e.target.value);
-        setPartyName(e.target.value);
-        setPartyId(null);
-      }}
-      onFocus={() =>
-        partyResults.length > 0 && setShowPartyResults(true)
-      }
-    />
+                    {showPartyResults && partyResults.length > 0 && (
+                      <div
+                        className="border rounded bg-white shadow-sm"
+                        style={{
+                          position: "absolute",
+                          zIndex: 5,
+                          width: "100%",
+                          maxHeight: 180,
+                          overflowY: "auto",
+                        }}
+                      >
+                        {partyResults.map((p) => (
+                          <div
+                            key={p.id}
+                            className="p-2"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => pickParty(p)}
+                          >
+                            <strong>{p.name}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-    {showPartyResults && partyResults.length > 0 && (
-      <div
-        className="border rounded bg-white shadow-sm"
-        style={{
-          position: "absolute",
-          zIndex: 5,
-          width: "100%",
-          maxHeight: 180,
-          overflowY: "auto",
-        }}
-      >
-        {partyResults.map((p) => (
-          <div
-            key={p.id}
-            className="p-2"
-            style={{ cursor: "pointer" }}
-            onClick={() => pickParty(p)}
-          >
-            <strong>{p.name}</strong>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-
-</div>
-              
                 <hr />
 
                 <div className="d-flex justify-content-between align-items-center mb-3">
@@ -1215,7 +1199,7 @@ const downloadSelected = async () => {
                   <tbody>
                     {detailEntry.items.map((item) => (
                       <tr key={item.id}>
-                      <td>{detailEntry.exit_code}</td>
+                        <td>{detailEntry.exit_code}</td>
                         <td>
                           <Link to={`/admin/products?highlight=${item.product_id}`}>{item.product_name}</Link>
                         </td>
@@ -1232,21 +1216,21 @@ const downloadSelected = async () => {
                       </tr>
                     ))}
                   </tbody>
-             <tfoot>
-  <tr>
-    <td colSpan={5} className="text-end fw-bold">
-      Total
-    </td>
-    <td className="fw-bold">
-      {money(
-        detailEntry.items.reduce(
-          (s, i) => s + i.unit_price * i.quantity,
-          0
-        )
-      )}
-    </td>
-  </tr>
-</tfoot>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={5} className="text-end fw-bold">
+                        Total
+                      </td>
+                      <td className="fw-bold">
+                        {money(
+                          detailEntry.items.reduce(
+                            (s, i) => s + i.unit_price * i.quantity,
+                            0
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>

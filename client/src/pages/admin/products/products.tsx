@@ -12,6 +12,7 @@ import {
   DeleteButton,
   SaveButton,
 } from "../../../componets/ui/button";
+import TableFilters from "../../../componets/ui/TableFilters";
 
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
@@ -453,106 +454,50 @@ const downloadSelected = () => {
 
         <div className="p-4 bg-light min-vh-100">
 
-          {/* ================= TOP BAR ================= */}
-          <div className="d-flex flex-wrap gap-2 align-items-center mb-4">
-
-            {/* SEARCH */}
-            <input
-              className="form-control"
-              placeholder="Search products..."
-              style={{ maxWidth: 180 }}
-              value={filters.search}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  search: e.target.value,
-                }))
-              }
-            />
-
-            {/* CATEGORY FILTER */}
-            <select
-              className="form-control"
-              style={{ maxWidth: 180 }}
-              value={filters.category}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  category: e.target.value,
-                }))
-              }
-            >
-              <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            {/* BRAND FILTER */}
-            <select
-              className="form-control"
-              style={{ maxWidth: 180 }}
-              value={filters.brand}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  brand: e.target.value,
-                }))
-              }
-            >
-              <option value="">All Brands</option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-
-            {/* SORT */}
-            <select
-              className="form-control"
-              style={{ maxWidth: 180 }}
-              value={filters.sort}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  sort: e.target.value,
-                }))
-              }
-            >
-              <option value="">Sort by</option>
-              <option value="az">A → Z</option>
-              <option value="za">Z → A</option>
-              <option value="price_low">Price Low</option>
-              <option value="price_high">Price High</option>
-            </select>
-
-            {/* RESET BUTTON */}
-            <button
-              className="btn btn-outline-secondary"
-              onClick={() =>
-                setFilters({
-                  search: "",
-                  category: "",
-                  brand: "",
-                  sort: "",
-                })
-              }
-            >
-              Reset
-            </button>
-
-            {/* ADD BUTTON */}
-            <button
-              className="btn btn-primary ms-auto"
-              onClick={() => setShowModal(true)}
-            >
-              + Add Product
-            </button>
-
-          </div>
+          {/* ================= TOP BAR (reusable filters) ================= */}
+          <TableFilters
+            values={filters}
+            onChange={(key, value) =>
+              setFilters((prev) => ({ ...prev, [key]: value }))
+            }
+            onReset={() =>
+              setFilters({ search: "", category: "", brand: "", sort: "" })
+            }
+            fields={[
+              { type: "search", key: "search", placeholder: "Search products..." },
+              {
+                type: "select",
+                key: "category",
+                placeholder: "All Categories",
+                options: categories.map((c) => ({ label: c.name, value: c.id })),
+              },
+              {
+                type: "select",
+                key: "brand",
+                placeholder: "All Brands",
+                options: brands.map((b) => ({ label: b.name, value: b.id })),
+              },
+              {
+                type: "select",
+                key: "sort",
+                placeholder: "Sort by",
+                options: [
+                  { label: "A → Z", value: "az" },
+                  { label: "Z → A", value: "za" },
+                  { label: "Price Low", value: "price_low" },
+                  { label: "Price High", value: "price_high" },
+                ],
+              },
+            ]}
+            actions={
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowModal(true)}
+              >
+                + Add Product
+              </button>
+            }
+          />
 
           {/* ================= TABLE ================= */}
           <div className="card shadow-sm border-0">

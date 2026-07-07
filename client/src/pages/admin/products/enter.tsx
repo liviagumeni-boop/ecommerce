@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Sidebar from "../../../layout/sidebar";
 import AdminHeader from "../../../layout/headeradmin";
+import TableFilters, { FilterField } from "../../../componets/ui/TableFilters";
 import DateRangeFilter from "../../../componets/common/datarange";
 import api from "../../../api/axios";
 import { useToast } from "../../../componets/common/ToastContext";
@@ -37,7 +38,7 @@ type Supplier = {
 // aggregates across every product in that bill.
 type BillRow = {
   bill_id: number;
-    ent_id: number | string; 
+  ent_id: number | string;
   supplier_id: number | null;
   supplier_name: string;
   contact: string | null;
@@ -108,6 +109,17 @@ const cartesian = (arrays: string[][]): string[][] => {
 const variantLabel = (v: { size: string | null; color: string | null; memory: string | null }) =>
   [v.size, v.color, v.memory].filter(Boolean).join(" / ") || "Default";
 
+/* ================= FILTER FIELDS (this page only needs a search box) ================= */
+// The date range is handled separately via DateRangeFilter (passed as `extra`),
+// since it isn't a plain text/select input.
+const ENTRY_FILTER_FIELDS: FilterField[] = [
+  {
+    type: "search",
+    key: "search",
+    placeholder: "Search product or supplier...",
+  },
+];
+
 const Entries: React.FC = () => {
   const { showToast } = useToast();
 
@@ -115,9 +127,12 @@ const Entries: React.FC = () => {
   const [rows, setRows] = useState<BillRow[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [listSearch, setListSearch] = useState("");
-const [startDate, setStartDate] = useState("");
-const [endDate, setEndDate] = useState("");
+
+  // Generic filter values keyed by field.key — this is what TableFilters reads/writes.
+  const [filters, setFilters] = useState<Record<string, any>>({ search: "" });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   const limit = 12;
 
   /* ================= EXPANDED BILL (inline items) ================= */
@@ -175,15 +190,15 @@ const [endDate, setEndDate] = useState("");
   /* ================= FETCH LIST ================= */
   const fetchEntries = async () => {
     try {
-     const res = await api.get("/stock-entries", {
-  params: {
-    page,
-    limit,
-    search: listSearch,
-    startDate,
-    endDate,
-  },
-});
+      const res = await api.get("/stock-entries", {
+        params: {
+          page,
+          limit,
+          search: filters.search,
+          startDate,
+          endDate,
+        },
+      });
       setRows(res.data.data);
       setTotalPages(res.data.totalPages);
     } catch (err) {
@@ -192,9 +207,9 @@ const [endDate, setEndDate] = useState("");
     }
   };
 
-useEffect(() => {
-  fetchEntries();
-}, [page, listSearch, startDate, endDate]);
+  useEffect(() => {
+    fetchEntries();
+  }, [page, filters, startDate, endDate]);
 
   /* ================= FETCH BRANDS / CATEGORIES (for Add Product form) ================= */
   const fetchBrands = async () => {
@@ -421,24 +436,26 @@ useEffect(() => {
     setValueDrafts({});
     setNewProductVariants([]);
   };
-const [selectedBills, setSelectedBills] = useState<Set<number>>(new Set());
-const toggleSelectBill = (id: number) => {
-  setSelectedBills((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
-};
 
-const selectAllVisible = () => {
-  const allIds = rows.map((r) => r.bill_id);
-  setSelectedBills(new Set(allIds));
-};
+  const [selectedBills, setSelectedBills] = useState<Set<number>>(new Set());
+  const toggleSelectBill = (id: number) => {
+    setSelectedBills((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-const clearSelection = () => {
-  setSelectedBills(new Set());
-};
+  const selectAllVisible = () => {
+    const allIds = rows.map((r) => r.bill_id);
+    setSelectedBills(new Set(allIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedBills(new Set());
+  };
+
   /* ================= ADD PRODUCT (from Stock Entry) ================= */
   // Same create call as Products.tsx's addProduct, then re-queries
   // /products/search so we get back the exact shape pickProduct expects
@@ -607,74 +624,73 @@ const clearSelection = () => {
       showToast("Failed to delete bill", "error");
     }
   };
-const downloadSelected = async () => {
-  try {
-    const ids = Array.from(selectedBills);
 
-    if (ids.length === 0) {
-      showToast("No bills selected", "warning" as any);
-      return;
-    }
+  const downloadSelected = async () => {
+    try {
+      const ids = Array.from(selectedBills);
 
-    const responses = await Promise.all(
-      ids.map((id) => api.get(`/stock-entries/${id}`))
-    );
+      if (ids.length === 0) {
+        showToast("No bills selected", "warning" as any);
+        return;
+      }
 
-    const bills = responses.map((r) => r.data);
+      const responses = await Promise.all(
+        ids.map((id) => api.get(`/stock-entries/${id}`))
+      );
 
-    const rows: any[] = [];
+      const bills = responses.map((r) => r.data);
 
-    bills.forEach((bill) => {
-      bill.items.forEach((item: any) => {
-        rows.push({
-          BillID: bill.id,
-          ENT_ID: item.ent_id || bill.ent_id || "",   // 🔥 FIX HERE
-          Date: new Date(bill.created_at).toLocaleString(),
-          Supplier: bill.supplier_name,
-          Contact: bill.contact || "",
+      const rows: any[] = [];
 
-          LinkedSupplier: bill.supplier_table_name || "",
-          SupplierContactPerson: bill.supplier_contact_name || "",
-          SupplierPhone: bill.supplier_phone || "",
-          SupplierEmail: bill.supplier_email || "",
-          SupplierAddress: bill.supplier_address || "",
+      bills.forEach((bill) => {
+        bill.items.forEach((item: any) => {
+          rows.push({
+            BillID: bill.id,
+            ENT_ID: item.ent_id || bill.ent_id || "",
+            Date: new Date(bill.created_at).toLocaleString(),
+            Supplier: bill.supplier_name,
+            Contact: bill.contact || "",
 
-          Product: item.product_name,
-          Variant:
-            item.size || item.color || item.memory
-              ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
-              : "",
+            LinkedSupplier: bill.supplier_table_name || "",
+            SupplierContactPerson: bill.supplier_contact_name || "",
+            SupplierPhone: bill.supplier_phone || "",
+            SupplierEmail: bill.supplier_email || "",
+            SupplierAddress: bill.supplier_address || "",
 
-          Quantity: item.quantity,
+            Product: item.product_name,
+            Variant:
+              item.size || item.color || item.memory
+                ? [item.size, item.color, item.memory].filter(Boolean).join(" / ")
+                : "",
+
+            Quantity: item.quantity,
+          });
         });
       });
-    });
 
-    const headers = Object.keys(rows[0] || {});
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) =>
-        headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
-      ),
-    ].join("\n");
+      const headers = Object.keys(rows[0] || {});
+      const csv = [
+        headers.join(","),
+        ...rows.map((r) =>
+          headers.map((h) => `"${(r as any)[h] ?? ""}"`).join(",")
+        ),
+      ].join("\n");
 
-    const blob = new Blob([csv], { type: "text/csv" });
+      const blob = new Blob([csv], { type: "text/csv" });
 
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "stock-entries-full-export.csv";
-    a.click();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "stock-entries-full-export.csv";
+      a.click();
 
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.log(err);
-    showToast("Export failed", "error" as any);
-  }
-};
-useEffect(() => {
-  fetchEntries();
-}, [page, listSearch, startDate, endDate]);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.log(err);
+      showToast("Export failed", "error" as any);
+    }
+  };
+
   return (
     <div className="d-flex">
       <Sidebar />
@@ -683,46 +699,37 @@ useEffect(() => {
         <AdminHeader />
 
         <div className="p-4 bg-light min-vh-100">
-          {/* ================= TOP BAR ================= */}
-          <div className="d-flex flex-wrap gap-2 align-items-center mb-4">
-          
-
-            <input
-              className="form-control"
-              style={{ maxWidth: 220 }}
-              placeholder="Search product or supplier..."
-              value={listSearch}
-              onChange={(e) => {
-                setListSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-   <DateRangeFilter
-     startDate={startDate}
-     endDate={endDate}
-     onChange={(start: string, end: string) => {
-       setStartDate(start);
-       setEndDate(end);
-       setPage(1);
-     }}
-   />
-
-  {(startDate || endDate) && (
-    <button
-      className="btn btn-outline-secondary btn-sm"
-      onClick={() => {
-        setStartDate("");
-        setEndDate("");
-        setPage(1);
-      }}
-    >
-      Clear
-    </button>
-            )}
-            <button className="btn btn-primary ms-auto" onClick={() => setShowModal(true)}>
-              + New Entry
-            </button>
-          </div>
+          {/* ================= TOP BAR (generic filters + date range + actions) ================= */}
+          <TableFilters
+            values={filters}
+            onChange={(key, value) => {
+              setFilters((prev) => ({ ...prev, [key]: value }));
+              setPage(1);
+            }}
+            onReset={() => {
+              setFilters({ search: "" });
+              setStartDate("");
+              setEndDate("");
+              setPage(1);
+            }}
+            fields={ENTRY_FILTER_FIELDS}
+            extra={
+              <DateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(start: string, end: string) => {
+                  setStartDate(start);
+                  setEndDate(end);
+                  setPage(1);
+                }}
+              />
+            }
+            actions={
+              <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+                + New Entry
+              </button>
+            }
+          />
 
           {/* ================= TABLE (one row per BILL) ================= */}
           <div className="card shadow-sm border-0">
@@ -731,17 +738,16 @@ useEffect(() => {
                 <thead>
                   <tr>
                     <th style={{ width: 32 }}>
-  <input
-    type="checkbox"
-    checked={rows.length > 0 && selectedBills.size === rows.length}
-    onChange={(e) => {
-      if (e.target.checked) selectAllVisible();
-      else clearSelection();
-    }}
-  />
-</th>
+                      <input
+                        type="checkbox"
+                        checked={rows.length > 0 && selectedBills.size === rows.length}
+                        onChange={(e) => {
+                          if (e.target.checked) selectAllVisible();
+                          else clearSelection();
+                        }}
+                      />
+                    </th>
                     <th>Id</th>
-                     
                     <th>Date</th>
                     <th>Products</th>
                     <th>Items</th>
@@ -757,15 +763,14 @@ useEffect(() => {
                         style={{ cursor: "pointer" }}
                         onClick={() => toggleExpand(r.bill_id)}
                       >
-                       <td onClick={(e) => e.stopPropagation()}>
-  <input
-    type="checkbox"
-    checked={selectedBills.has(r.bill_id)}
-    onChange={() => toggleSelectBill(r.bill_id)}
-  />
-</td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedBills.has(r.bill_id)}
+                            onChange={() => toggleSelectBill(r.bill_id)}
+                          />
+                        </td>
                         <td>ENT#{r.bill_id}</td>
-                        
                         <td>{new Date(r.created_at).toLocaleDateString()}</td>
                         <td style={{ maxWidth: 260 }} className="text-truncate">
                           {r.product_names}
@@ -868,23 +873,25 @@ useEffect(() => {
               Next
             </button>
           </div>
-{selectedBills.size > 0 && (
-<div className="d-flex gap-2 mb-3 align-items-center justify-content-end">
-    <span>{selectedBills.size} selected</span>
 
-    <button className="btn btn-outline-secondary btn-sm" onClick={selectAllVisible}>
-      Select All
-    </button>
+          {selectedBills.size > 0 && (
+            <div className="d-flex gap-2 mb-3 align-items-center justify-content-end">
+              <span>{selectedBills.size} selected</span>
 
-    <button className="btn btn-outline-secondary btn-sm" onClick={clearSelection}>
-      Clear
-    </button>
+              <button className="btn btn-outline-secondary btn-sm" onClick={selectAllVisible}>
+                Select All
+              </button>
 
-    <button className="btn btn-primary btn-sm" onClick={downloadSelected}>
-      Download
-    </button>
-  </div>
-)}
+              <button className="btn btn-outline-secondary btn-sm" onClick={clearSelection}>
+                Clear
+              </button>
+
+              <button className="btn btn-primary btn-sm" onClick={downloadSelected}>
+                Download
+              </button>
+            </div>
+          )}
+
           {/* ================= ADD ENTRY MODAL ================= */}
           {showModal && (
             <div
@@ -940,14 +947,11 @@ useEffect(() => {
                           onClick={() => pickSupplier(s)}
                         >
                           <strong>{s.name}</strong>{" "}
-                        
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-
-              
 
                 <hr />
 
@@ -1400,7 +1404,7 @@ useEffect(() => {
                   <tbody>
                     {detailEntry.items.map((item) => (
                       <tr key={item.id}>
-                         <td>{item.ent_id || "—"}</td>
+                        <td>{item.ent_id || "—"}</td>
                         <td>{item.product_name}</td>
                         <td>
                           {item.size || item.color || item.memory
