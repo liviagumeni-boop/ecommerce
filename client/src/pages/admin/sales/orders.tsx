@@ -257,10 +257,10 @@ onReset={() =>
     <DateRangeFilter
       startDate={filters.date}
       endDate={filters.date}
-     onChange={(start: string, _end: string) =>
+onChange={(start: string | "", _end: string | "") =>
   setFilters({
     ...filters,
-    date: start || "",
+    date: start,
   })
 }
     />
