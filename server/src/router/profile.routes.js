@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs"); // match whatever your signup route uses — swap to "bcrypt" if that's what you have installed
 const pool = require("../config/db"); // your pg Pool
 
 // GET /api/users/me
@@ -81,6 +82,58 @@ router.put("/me/address", async (req, res) => {
     );
 
     res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PUT /api/users/me/password
+router.put("/me/password", async (req, res) => {
+  try {
+    const userId = req.headers.userid;
+    const { old, new: newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    if (!old || !newPassword) {
+      return res.status(400).json({ message: "Old and new password are required" });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    const result = await pool.query(
+      `SELECT password FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    const user = result.rows[0];
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(old, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    const sameAsOld = await bcrypt.compare(newPassword, user.password);
+    if (sameAsOld) {
+      return res.status(400).json({ message: "New password must be different from old password" });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      `UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2`,
+      [hashed, userId]
+    );
+
+    res.json({ success: true, message: "Password updated successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });

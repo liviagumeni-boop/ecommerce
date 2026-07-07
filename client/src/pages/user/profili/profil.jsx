@@ -34,6 +34,8 @@ const { showToast } = useToast();
     confirm: "",
   });
 
+  const [savingPassword, setSavingPassword] = useState(false);
+
  const menu = [
   { key: "profile", label: "Profile" },
   { key: "password", label: "Password" },
@@ -100,25 +102,43 @@ showToast("Profile updated", "success");
   };
 
   /* ================= PASSWORD ================= */
- const savePassword = async () => {
-  if (!passwords.old || !passwords.new) {
-    showToast("Fill all fields", "warning");
-    return;
-  }
-  if (passwords.new !== passwords.confirm) {
-    showToast("Passwords don't match", "error");
-    return;
-  }
+  const savePassword = async () => {
+    if (!passwords.old || !passwords.new || !passwords.confirm) {
+      showToast("Fill all fields", "warning");
+      return;
+    }
+    if (passwords.new.length < 8) {
+      showToast("New password must be at least 8 characters", "warning");
+      return;
+    }
+    if (passwords.new !== passwords.confirm) {
+      showToast("Passwords don't match", "error");
+      return;
+    }
+    if (passwords.new === passwords.old) {
+      showToast("New password must be different from old password", "warning");
+      return;
+    }
 
-  await api.put(
-    "/users/me/password",
-    { old: passwords.old, new: passwords.new },
-    { headers: { userid: userId } }
-  );
+    setSavingPassword(true);
+    try {
+      await api.put(
+        "/users/me/password",
+        { old: passwords.old, new: passwords.new },
+        { headers: { userid: userId } }
+      );
 
-  showToast("Password updated", "success");
-  setPasswords({ old: "", new: "", confirm: "" });
-};
+      showToast("Password updated", "success");
+      setPasswords({ old: "", new: "", confirm: "" });
+    } catch (err) {
+      console.error(err);
+      const message =
+        err?.response?.data?.message || "Failed to update password";
+      showToast(message, "error");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
 
   /* ================= LOGOUT ================= */
   const handleLogout = () => {
@@ -366,8 +386,12 @@ showToast("Profile updated", "success");
                 style={input}
               />
 
-              <button onClick={savePassword} style={btn}>
-                Save Password
+              <button
+                onClick={savePassword}
+                style={btn}
+                disabled={savingPassword}
+              >
+                {savingPassword ? "Saving..." : "Save Password"}
               </button>
             </>
           )}
