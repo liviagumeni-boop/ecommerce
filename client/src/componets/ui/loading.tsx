@@ -4,7 +4,7 @@ type LoadingProps = {
   message?: string;
 };
 
-const Loading: React.FC<LoadingProps> = ({ message = "Loading..." }) => {
+const Loading: React.FC<LoadingProps> = ({ message = "Loading1..." }) => {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="flex flex-col items-center gap-4">
