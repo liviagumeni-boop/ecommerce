@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   FaChartBar,
   FaBoxOpen,
@@ -13,10 +13,29 @@ function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [openInventory, setOpenInventory] = useState(false);
+  const isInventoryActive =
+    location.pathname.startsWith("/admin/products") ||
+    location.pathname.startsWith("/admin/categories") ||
+    location.pathname.startsWith("/admin/sales");
+
+  const [openInventory, setOpenInventory] = useState(isInventoryActive);
   const clickTimeout = useRef(null);
 
+  // Keep the submenu open whenever we're on one of its pages
+  // (covers direct navigation, refresh, and browser back/forward)
+  useEffect(() => {
+    if (isInventoryActive) {
+      setOpenInventory(true);
+    }
+  }, [isInventoryActive]);
+
   const handleInventoryClick = () => {
+    // Don't allow collapsing while on a submenu page — only toggle
+    // freely when we're elsewhere (e.g. Dashboard, Customers, etc.)
+    if (isInventoryActive) {
+      setOpenInventory(true);
+      return;
+    }
     setOpenInventory((prev) => !prev);
   };
 
@@ -37,10 +56,6 @@ function Sidebar() {
     }
   };
 
-  const isInventoryActive =
-    location.pathname.startsWith("/admin/products") ||
-    location.pathname.startsWith("/admin/sales");
-
   return (
     <aside className="sidebar">
       <h2 className="sidebar-title">Admin Panel</h2>
@@ -59,23 +74,24 @@ function Sidebar() {
         </Link>
 
         {/* INVENTORIES (SAME STYLE) */}
-       <div
-  className={`sidebar-btn ${isInventoryActive ? "active" : ""}`}
-  onMouseDown={handleInventoryMouseDown}
-  style={{
-    cursor: "pointer",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  }}
->
-  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-    <FaBoxOpen />
-    <span>Warehouse</span>
-  </div>
+        <div
+          className={`sidebar-btn ${isInventoryActive ? "active" : ""}`}
+          onMouseDown={handleInventoryMouseDown}
+          style={{
+            cursor: "pointer",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <FaBoxOpen />
+            <span>Warehouse</span>
+          </div>
 
-  {openInventory ? <FaChevronUp /> : <FaChevronDown />}
-</div>
+          {openInventory ? <FaChevronUp /> : <FaChevronDown />}
+        </div>
+
         {/* DROPDOWN (SAME STYLE BUTTONS) */}
         {openInventory && (
           <>
@@ -88,16 +104,18 @@ function Sidebar() {
             >
               <span>Products</span>
             </Link>
-{/* CATEGORIES */}
-        <Link
-          to="/admin/categories"
-          className={`sidebar-btn ${
-            location.pathname === "/admin/categories" ? "active" : ""
-          }`}
+
+            {/* CATEGORIES */}
+            <Link
+              to="/admin/categories"
+              className={`sidebar-btn ${
+                location.pathname === "/admin/categories" ? "active" : ""
+              }`}
               style={{ paddingLeft: "35px", fontSize: "14px" }}
-        >
-          <span>Categories</span>
-        </Link>
+            >
+              <span>Categories</span>
+            </Link>
+
             <Link
               to="/admin/products/enter"
               className={`sidebar-btn ${
@@ -119,8 +137,6 @@ function Sidebar() {
             </Link>
           </>
         )}
-
-        
 
         {/* SALES */}
         <Link
