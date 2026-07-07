@@ -27,7 +27,6 @@ const Orders: React.FC = () => {
 const [filters, setFilters] = useState({
   searchId: "",
   searchName: "",
-  date: "",
   startDate: "",
   endDate: "",
   status: "",
@@ -220,7 +219,7 @@ onReset={() =>
   setFilters({
     searchId: "",
     searchName: "",
-    date: "",
+  
     startDate: "",
     endDate: "",
     status: "",
@@ -253,18 +252,19 @@ onReset={() =>
       ],
     },
   ]}
-  extra={
-    <DateRangeFilter
-      startDate={filters.date}
-      endDate={filters.date}
-onChange={(start: string | "", _end: string | "") =>
-  setFilters({
-    ...filters,
-    date: start,
-  })
+extra={
+  <DateRangeFilter
+    startDate={filters.startDate}
+    endDate={filters.endDate}
+    onChange={(start: string, end: string) =>
+      setFilters({
+        ...filters,
+        startDate: start,
+        endDate: end,
+      })
+    }
+  />
 }
-    />
-  }
 />
           {/* ================= TABLE ================= */}
           <div className="card shadow-sm border-0">
