@@ -38,6 +38,12 @@ const { showToast } = useToast();
   const [loginAlerts, setLoginAlerts] = useState(true);
   const [autoLogout, setAutoLogout] = useState(false);
 
+  // change password
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
   useEffect(() => {
     const fetchStore = async () => {
       try {
@@ -155,6 +161,46 @@ const handleSaveGoogle = async () => {
     setSavingGoogle(false);
   }
 };
+
+const handleChangePassword = async () => {
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    showToast("Please fill in all password fields", "error");
+    return;
+  }
+  if (newPassword.length < 8) {
+    showToast("New password must be at least 8 characters", "error");
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    showToast("New passwords do not match", "error");
+    return;
+  }
+  if (newPassword === currentPassword) {
+    showToast("New password must be different from current password", "error");
+    return;
+  }
+
+  setSavingPassword(true);
+  try {
+    await api.put("/change-password", {
+      currentPassword,
+      newPassword,
+    });
+
+    showToast("Password updated successfully", "success");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  } catch (err: any) {
+    console.error(err);
+    const message =
+      err?.response?.data?.message || "Failed to update password";
+    showToast(message, "error");
+  } finally {
+    setSavingPassword(false);
+  }
+};
+
 const handleLogout = () => {
   // Remove admin auth
   localStorage.removeItem("adminToken");
@@ -488,22 +534,32 @@ const handleLogout = () => {
                       type="password"
                       className="form-control my-2"
                       placeholder="Current Password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
                     />
 
                     <input
                       type="password"
                       className="form-control my-2"
                       placeholder="New Password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                     />
 
                     <input
                       type="password"
                       className="form-control my-2"
                       placeholder="Confirm New Password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                     />
 
-                    <button className="btn btn-primary w-100 mt-2">
-                      Update Password
+                    <button
+                      className="btn btn-primary w-100 mt-2"
+                      onClick={handleChangePassword}
+                      disabled={savingPassword}
+                    >
+                      {savingPassword ? "Updating..." : "Update Password"}
                     </button>
 
                     <button className="btn btn-outline-danger mt-3 w-100">
