@@ -446,16 +446,6 @@ extra={
                     </button>
                   )}
 
-                  {selectedOrder.status !== "pending" && (
-                    <button
-                      className="btn btn-warning"
-                      onClick={() =>
-                        markPending(selectedOrder.id)
-                      }
-                    >
-                      Mark Pending
-                    </button>
-                  )}
 
                 </div>
               </div>
