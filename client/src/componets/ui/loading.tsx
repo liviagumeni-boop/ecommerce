@@ -1,39 +1,14 @@
 import React from "react";
+import { FaSpinner } from "react-icons/fa";
 
 type LoadingProps = {
   message?: string;
-  fullScreen?: boolean;
 };
 
-const Loading: React.FC<LoadingProps> = ({ message = "Loading...", fullScreen = false }) => {
+const Loading: React.FC<LoadingProps> = ({ message = "Loading..." }) => {
   return (
-    <div
-      className={`flex flex-col items-center justify-center gap-3 bg-white ${
-        fullScreen ? "min-h-screen" : "py-10"
-      }`}
-    >
-      <svg
-        className="h-6 w-6 animate-spin text-indigo-500"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle
-          className="opacity-20"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-        />
-        <path
-          d="M22 12a10 10 0 0 0-10-10"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-      </svg>
-
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white">
+      <FaSpinner className="h-10 w-10 animate-spin text-indigo-500" />
       <p className="text-sm font-medium text-gray-500">{message}</p>
     </div>
   );
