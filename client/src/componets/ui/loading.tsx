@@ -2,13 +2,18 @@ import React from "react";
 
 type LoadingProps = {
   message?: string;
+  fullScreen?: boolean;
 };
 
-const Loading: React.FC<LoadingProps> = ({ message = "Loading..." }) => {
+const Loading: React.FC<LoadingProps> = ({ message = "Loading...", fullScreen = false }) => {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white">
+    <div
+      className={`flex flex-col items-center justify-center gap-3 bg-white ${
+        fullScreen ? "min-h-screen" : "py-10"
+      }`}
+    >
       <svg
-        className="h-10 w-10 animate-spin text-indigo-500"
+        className="h-6 w-6 animate-spin text-indigo-500"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
