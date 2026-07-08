@@ -25,8 +25,7 @@ const Orders: React.FC = () => {
 
   /* ================= FILTERS ================= */
 const [filters, setFilters] = useState({
-  searchId: "",
-  searchName: "",
+  search: "",
   startDate: "",
   endDate: "",
   status: "",
@@ -94,31 +93,28 @@ const updateFilter = (key: string, value: string) => {
   };
 
   /* ================= FILTER LOGIC ================= */
-  const filteredOrders = orders.filter((o) => {
-    const matchId =
-      filters.searchId === "" ||
-      o.id.toString().includes(filters.searchId);
-
-    const matchName =
-      filters.searchName === "" ||
-      (o.user_name || "")
-        .toLowerCase()
-        .includes(filters.searchName.toLowerCase());
+const filteredOrders = orders.filter((o) => {
+  const matchSearch =
+    filters.search === "" ||
+    o.id.toString().includes(filters.search) ||
+    (o.user_name || "")
+      .toLowerCase()
+      .includes(filters.search.toLowerCase());
 
   const orderDate = new Date(o.created_at)
-  .toISOString()
-  .split("T")[0];
+    .toISOString()
+    .split("T")[0];
 
-const matchDate =
-  (!filters.startDate || orderDate >= filters.startDate) &&
-  (!filters.endDate || orderDate <= filters.endDate);
+  const matchDate =
+    (!filters.startDate || orderDate >= filters.startDate) &&
+    (!filters.endDate || orderDate <= filters.endDate);
 
   const matchStatus =
-  filters.status === "" ||
-  (o.status || "").toLowerCase().trim() === filters.status.toLowerCase().trim();
+    filters.status === "" ||
+    (o.status || "").toLowerCase().trim() === filters.status.toLowerCase().trim();
 
-    return matchId && matchName && matchDate && matchStatus;
-  });
+  return matchSearch && matchDate && matchStatus;
+});
 
   /* ================= RESET PAGE ================= */
   useEffect(() => {
@@ -217,41 +213,28 @@ const matchDate =
   }
 onReset={() =>
   setFilters({
-    searchId: "",
-    searchName: "",
-  
+    search: "",
     startDate: "",
     endDate: "",
     status: "",
   })
 }
-  fields={[
-    {
-      type: "search",
-      key: "searchId",
-      placeholder: "Search ID...",
-    },
-    {
-      type: "search",
-      key: "searchName",
-      placeholder: "Client name...",
-    },
-    {
-      type: "select",
-      key: "status",
-      placeholder: "All Status",
-      options: [
-        {
-          label: "Pending",
-          value: "pending",
-        },
-        {
-          label: "Delivered",
-          value: "delivered",
-        },
-      ],
-    },
-  ]}
+fields={[
+  {
+    type: "search",
+    key: "search",
+    placeholder: "Search by ID or client name...",
+  },
+  {
+    type: "select",
+    key: "status",
+    placeholder: "All Status",
+    options: [
+      { label: "Pending", value: "pending" },
+      { label: "Delivered", value: "delivered" },
+    ],
+  },
+]}
 extra={
   <DateRangeFilter
     startDate={filters.startDate}
