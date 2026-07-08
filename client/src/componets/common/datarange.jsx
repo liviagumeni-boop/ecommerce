@@ -93,7 +93,8 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
           align-items: center;
           gap: 8px;
           height: 38px;
-          padding: 0 14px;
+          min-width: 190px;
+          padding: 0 16px;
           border-radius: 8px;
           border: 1px solid #d7dbe0;
           background: #fff;
@@ -130,12 +131,13 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
           top: calc(100% + 8px);
           left: 0;
           z-index: 50;
-          width: 300px;
+          width: 340px;
           background: #fff;
           border: 1px solid #e4e6ea;
           border-radius: 12px;
           box-shadow: 0 10px 30px rgba(20,20,30,0.12);
           padding: 14px;
+          box-sizing: border-box;
         }
 
         .drf-section-label {
@@ -167,16 +169,18 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
 
         .drf-divider { height: 1px; background: #edeef1; margin: 12px 0; }
 
-        .drf-inputs { display: flex; align-items: center; gap: 8px; }
-        .drf-input-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .drf-inputs { display: flex; align-items: center; gap: 6px; }
+        .drf-input-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
         .drf-input-wrap label { font-size: 11px; color: #9096a1; }
         .drf-input-wrap input[type="date"] {
           width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
           height: 34px;
           border: 1px solid #d7dbe0;
           border-radius: 7px;
-          padding: 0 8px;
-          font-size: 13px;
+          padding: 0 6px;
+          font-size: 12.5px;
           color: #33373d;
           background: #fff;
         }
