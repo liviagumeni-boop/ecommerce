@@ -135,13 +135,8 @@ const money = (n: number) =>
 const EXIT_FILTER_FIELDS: FilterField[] = [
   {
     type: "search",
-    key: "productSearch",
-    placeholder: "Search product...",
-  },
-  {
-    type: "search",
-    key: "partySearch",
-    placeholder: "Search customer / supplier...",
+    key: "search",
+    placeholder: "Search product or customer/supplier...",
   },
   {
     type: "select",
@@ -165,11 +160,10 @@ const Exits: React.FC = () => {
 
   // Generic filter values keyed by field.key — this is what TableFilters reads/writes.
   // typeFilter is kept as "" | "sale" | "return" here; "" means "all types".
-  const [filters, setFilters] = useState<Record<string, any>>({
-    productSearch: "",
-    partySearch: "",
-    typeFilter: "",
-  });
+const [filters, setFilters] = useState<Record<string, any>>({
+  search: "",
+  typeFilter: "",
+});
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -223,27 +217,26 @@ const Exits: React.FC = () => {
   const clearSelection = () => setSelectedExits(new Set());
 
   /* ================= FETCH LIST ================= */
-  const fetchExits = async () => {
-    try {
-      const res = await api.get("/stock-exits", {
-        params: {
-          page,
-          limit,
-          product: filters.productSearch,
-          party: filters.partySearch,
-          startDate,
-          endDate,
-          type: filters.typeFilter === "" ? undefined : filters.typeFilter,
-        },
-      });
-      setRows(res.data.data);
-      setTotalPages(res.data.totalPages);
-    } catch (err) {
-      console.log(err);
-      showToast("Failed to load exits", "error" as any);
-    }
-  };
-
+const fetchExits = async () => {
+  try {
+    const res = await api.get("/stock-exits", {
+      params: {
+        page,
+        limit,
+        product: filters.search,
+        party: filters.search,
+        startDate,
+        endDate,
+        type: filters.typeFilter === "" ? undefined : filters.typeFilter,
+      },
+    });
+    setRows(res.data.data);
+    setTotalPages(res.data.totalPages);
+  } catch (err) {
+    console.log(err);
+    showToast("Failed to load exits", "error" as any);
+  }
+};
   useEffect(() => {
     fetchExits();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -638,12 +631,12 @@ const Exits: React.FC = () => {
               setFilters((prev) => ({ ...prev, [key]: value }));
               setPage(1);
             }}
-            onReset={() => {
-              setFilters({ productSearch: "", partySearch: "", typeFilter: "" });
-              setStartDate("");
-              setEndDate("");
-              setPage(1);
-            }}
+       onReset={() => {
+  setFilters({ search: "", typeFilter: "" });
+  setStartDate("");
+  setEndDate("");
+  setPage(1);
+}}
             fields={EXIT_FILTER_FIELDS}
             extra={
               <DateRangeFilter
