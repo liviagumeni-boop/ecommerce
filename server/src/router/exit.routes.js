@@ -8,15 +8,19 @@ router.get("/stock-exits", async (req, res) => {
   const limit = Math.max(1, parseInt(req.query.limit) || 12);
   const offset = (page - 1) * limit;
 
-  const product = req.query.product?.trim() || null;
-  const party = req.query.party?.trim() || null;
+  // Frontend sends one combined search-box value as both `product` and
+  // `party` (same string in each). Treat it as a single search term that
+  // should match EITHER the product name OR the party name — not require
+  // both, which is what ANDing two separate params did (and which silently
+  // returned nothing whenever a search only matched a customer/supplier
+  // name and no product name).
+  const search = (req.query.product || req.query.party || "").trim() || null;
   const type = req.query.type || null;
 
   const startDate = req.query.startDate || null;
   const endDate = req.query.endDate || null;
 
-  const productParam = product ? `%${product}%` : null;
-  const partyParam = party ? `%${party}%` : null;
+  const searchParam = search ? `%${search}%` : null;
 
   try {
     const matchedSql = `
@@ -25,16 +29,15 @@ router.get("/stock-exits", async (req, res) => {
       JOIN stock_exit_entries se ON se.bill_id = b.id
       JOIN products p ON p.id = se.product_id
       WHERE
-        ($1::text IS NULL OR p.name ILIKE $1)
-        AND ($2::text IS NULL OR b.supplier_name ILIKE $2)
-        AND ($3::text IS NULL OR b.type = $3)
-        AND ($4::date IS NULL OR b.created_at::date >= $4)
-        AND ($5::date IS NULL OR b.created_at::date <= $5)
+        ($1::text IS NULL OR p.name ILIKE $1 OR b.supplier_name ILIKE $1)
+        AND ($2::text IS NULL OR b.type = $2)
+        AND ($3::date IS NULL OR b.created_at::date >= $3)
+        AND ($4::date IS NULL OR b.created_at::date <= $4)
     `;
 
     const countResult = await pool.query(
       `SELECT COUNT(*) FROM (${matchedSql}) m`,
-      [productParam, partyParam, type, startDate, endDate]
+      [searchParam, type, startDate, endDate]
     );
 
     const total = parseInt(countResult.rows[0].count, 10);
@@ -81,9 +84,9 @@ router.get("/stock-exits", async (req, res) => {
       WHERE b.id IN (SELECT id FROM matched)
       GROUP BY b.id
       ORDER BY b.created_at DESC
-      LIMIT $6 OFFSET $7
+      LIMIT $5 OFFSET $6
       `,
-      [productParam, partyParam, type, startDate, endDate, limit, offset]
+      [searchParam, type, startDate, endDate, limit, offset]
     );
 
     res.json({
