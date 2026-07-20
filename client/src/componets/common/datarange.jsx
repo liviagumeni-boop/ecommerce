@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /* =========================================================
-   Custom date-range filter — no MUI, no default library look.
-   A single trigger button (matches your existing outline-
-   secondary filter buttons) opens a small popover with:
+   Custom date-range filter — zero external libraries.
+   A single trigger button opens a popover with:
      - quick presets (Today / 7d / 30d / This month)
-     - two native date inputs for a custom range
+     - ONE calendar month grid for picking a custom range
+       (click a start day, then click an end day)
    Fully self-contained: styles are scoped under .drf- classes
    via an injected <style> tag, so it drops in anywhere.
    ========================================================= */
@@ -17,20 +17,59 @@ const PRESETS = [
   { label: "This month", type: "month" },
 ];
 
-const toISO = (d) => d.toISOString().split("T")[0];
+const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const toISO = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const isoToDate = (iso) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const todayISO = () => toISO(new Date());
 
 const formatDisplay = (start, end) => {
   if (!start && !end) return "All dates";
   const opts = { month: "short", day: "numeric" };
-  const s = start ? new Date(start + "T00:00:00").toLocaleDateString(undefined, opts) : "…";
-  const e = end ? new Date(end + "T00:00:00").toLocaleDateString(undefined, opts) : "…";
+  const s = start ? isoToDate(start).toLocaleDateString(undefined, opts) : "…";
+  const e = end ? isoToDate(end).toLocaleDateString(undefined, opts) : "…";
   return start === end ? s : `${s} – ${e}`;
+};
+
+const formatMonthLabel = (year, month) =>
+  new Date(year, month, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+// Builds a 6-week (42 cell) grid for the given month, including
+// leading/trailing days from adjacent months for a full calendar look.
+const buildMonthGrid = (year, month) => {
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay(); // 0 = Sunday
+  const gridStart = new Date(year, month, 1 - startOffset);
+
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+    cells.push({
+      iso: toISO(d),
+      day: d.getDate(),
+      inMonth: d.getMonth() === month,
+    });
+  }
+  return cells;
 };
 
 export default function DateRangeFilter({ startDate, endDate, onChange }) {
   const [open, setOpen] = useState(false);
   const [draftStart, setDraftStart] = useState(startDate || "");
   const [draftEnd, setDraftEnd] = useState(endDate || "");
+  const [hoverIso, setHoverIso] = useState(null);
+
+  const initial = isoToDate(startDate || todayISO());
+  const [viewYear, setViewYear] = useState(initial.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initial.getMonth());
+
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -69,8 +108,29 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
     setOpen(false);
   };
 
+  const handleDayClick = (iso) => {
+    // Start a fresh selection whenever there's no start, or a
+    // complete range is already set (start a new pick).
+    if (!draftStart || (draftStart && draftEnd)) {
+      setDraftStart(iso);
+      setDraftEnd("");
+      return;
+    }
+    // We have a start but no end yet — this click sets the end.
+    if (iso < draftStart) {
+      setDraftEnd(draftStart);
+      setDraftStart(iso);
+    } else {
+      setDraftEnd(iso);
+    }
+  };
+
   const applyCustom = () => {
-    onChange(draftStart, draftEnd);
+    if (draftStart && !draftEnd) {
+      onChange(draftStart, draftStart);
+    } else {
+      onChange(draftStart, draftEnd);
+    }
     setOpen(false);
   };
 
@@ -80,6 +140,30 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
     onChange("", "");
     setOpen(false);
   };
+
+  const goMonth = (delta) => {
+    let m = viewMonth + delta;
+    let y = viewYear;
+    if (m < 0) {
+      m = 11;
+      y -= 1;
+    } else if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+    setViewMonth(m);
+    setViewYear(y);
+  };
+
+  const grid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
+  const today = todayISO();
+
+  // Range preview: confirmed range, or start→hover while picking the end.
+  const rangeStart = draftStart || null;
+  const rangeEnd =
+    draftEnd || (draftStart && hoverIso ? (hoverIso < draftStart ? draftStart : hoverIso) : null);
+  const rangeStartForCompare =
+    draftStart && hoverIso && !draftEnd && hoverIso < draftStart ? hoverIso : rangeStart;
 
   const hasValue = Boolean(startDate || endDate);
 
@@ -131,7 +215,7 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
           top: calc(100% + 8px);
           left: 0;
           z-index: 50;
-          width: 340px;
+          width: 300px;
           background: #fff;
           border: 1px solid #e4e6ea;
           border-radius: 12px;
@@ -169,27 +253,88 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
 
         .drf-divider { height: 1px; background: #edeef1; margin: 12px 0; }
 
-        .drf-inputs { display: flex; align-items: center; gap: 6px; }
-        .drf-input-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .drf-input-wrap label { font-size: 11px; color: #9096a1; }
-        .drf-input-wrap input[type="date"] {
-          width: 100%;
-          max-width: 100%;
-          box-sizing: border-box;
-          height: 34px;
-          border: 1px solid #d7dbe0;
-          border-radius: 7px;
-          padding: 0 6px;
-          font-size: 12.5px;
+        .drf-cal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+        .drf-cal-title {
+          font-size: 13px;
+          font-weight: 600;
           color: #33373d;
+        }
+        .drf-cal-nav {
+          display: flex;
+          gap: 4px;
+        }
+        .drf-nav-btn {
+          width: 24px;
+          height: 24px;
+          border-radius: 6px;
+          border: 1px solid #e4e6ea;
           background: #fff;
+          color: #6b7078;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
         }
-        .drf-input-wrap input[type="date"]:focus {
-          outline: none;
-          border-color: #5b6cf9;
-          box-shadow: 0 0 0 3px rgba(91,108,249,0.12);
+        .drf-nav-btn:hover { background: #f2f3f6; color: #33373d; }
+
+        .drf-weekdays {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          margin-bottom: 2px;
         }
-        .drf-arrow { color: #c3c7ce; font-size: 13px; margin-top: 14px; }
+        .drf-weekday {
+          text-align: center;
+          font-size: 10.5px;
+          font-weight: 600;
+          color: #a5aab3;
+          padding: 4px 0;
+        }
+
+        .drf-days {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 2px;
+        }
+
+        .drf-day-cell { position: relative; }
+        .drf-day-btn {
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          border: none;
+          background: transparent;
+          color: #33373d;
+          font-size: 12.5px;
+          border-radius: 7px;
+          cursor: pointer;
+          position: relative;
+          z-index: 1;
+        }
+        .drf-day-btn:hover { background: #edf0ff; }
+        .drf-day-btn.drf-out { color: #c7cacf; }
+        .drf-day-btn.drf-today { box-shadow: inset 0 0 0 1px #c7cdfb; }
+
+        .drf-day-btn.drf-endpoint {
+          background: #4653e0;
+          color: #fff;
+          font-weight: 600;
+        }
+        .drf-day-btn.drf-endpoint:hover { background: #3a46c9; }
+
+        .drf-day-cell.drf-in-range::before {
+          content: "";
+          position: absolute;
+          inset: 0 -1px;
+          background: #eceeff;
+          z-index: 0;
+        }
+        .drf-day-cell.drf-range-start::before { left: 50%; border-radius: 7px 0 0 7px; }
+        .drf-day-cell.drf-range-end::before { right: 50%; border-radius: 0 7px 7px 0; }
 
         .drf-footer {
           display: flex;
@@ -217,6 +362,7 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
           cursor: pointer;
         }
         .drf-apply-btn:hover { background: #3a46c9; }
+        .drf-apply-btn:disabled { background: #c7cbf5; cursor: not-allowed; }
       `}</style>
 
       <button
@@ -267,33 +413,79 @@ export default function DateRangeFilter({ startDate, endDate, onChange }) {
           <div className="drf-divider" />
 
           <div className="drf-section-label">Custom range</div>
-          <div className="drf-inputs">
-            <div className="drf-input-wrap">
-              <label>From</label>
-              <input
-                type="date"
-                value={draftStart}
-                max={draftEnd || undefined}
-                onChange={(e) => setDraftStart(e.target.value)}
-              />
-            </div>
-            <span className="drf-arrow">→</span>
-            <div className="drf-input-wrap">
-              <label>To</label>
-              <input
-                type="date"
-                value={draftEnd}
-                min={draftStart || undefined}
-                onChange={(e) => setDraftEnd(e.target.value)}
-              />
-            </div>
+
+          <div className="drf-cal-head">
+            <button type="button" className="drf-nav-btn" onClick={() => goMonth(-1)} aria-label="Previous month">
+              ‹
+            </button>
+            <div className="drf-cal-title">{formatMonthLabel(viewYear, viewMonth)}</div>
+            <button type="button" className="drf-nav-btn" onClick={() => goMonth(1)} aria-label="Next month">
+              ›
+            </button>
+          </div>
+
+          <div className="drf-weekdays">
+            {WEEKDAY_LABELS.map((w) => (
+              <div className="drf-weekday" key={w}>
+                {w}
+              </div>
+            ))}
+          </div>
+
+          <div className="drf-days" onMouseLeave={() => setHoverIso(null)}>
+            {grid.map((cell) => {
+              const isEndpoint = cell.iso === draftStart || cell.iso === draftEnd;
+              const inRange =
+                rangeStartForCompare &&
+                rangeEnd &&
+                cell.iso > rangeStartForCompare &&
+                cell.iso < rangeEnd;
+              const isRangeStart = rangeStartForCompare && cell.iso === rangeStartForCompare;
+              const isRangeEnd = rangeEnd && cell.iso === rangeEnd;
+
+              const cellClasses = [
+                "drf-day-cell",
+                inRange || isRangeStart || isRangeEnd ? "drf-in-range" : "",
+                isRangeStart ? "drf-range-start" : "",
+                isRangeEnd ? "drf-range-end" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              const btnClasses = [
+                "drf-day-btn",
+                !cell.inMonth ? "drf-out" : "",
+                cell.iso === today ? "drf-today" : "",
+                isEndpoint ? "drf-endpoint" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+
+              return (
+                <div className={cellClasses} key={cell.iso}>
+                  <button
+                    type="button"
+                    className={btnClasses}
+                    onClick={() => handleDayClick(cell.iso)}
+                    onMouseEnter={() => setHoverIso(cell.iso)}
+                  >
+                    {cell.day}
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           <div className="drf-footer">
             <button type="button" className="drf-link-btn" onClick={clearAll}>
               Clear
             </button>
-            <button type="button" className="drf-apply-btn" onClick={applyCustom}>
+            <button
+              type="button"
+              className="drf-apply-btn"
+              onClick={applyCustom}
+              disabled={!draftStart}
+            >
               Apply
             </button>
           </div>
