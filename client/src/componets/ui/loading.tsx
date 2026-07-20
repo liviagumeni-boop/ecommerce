@@ -7,7 +7,7 @@ type LoadingProps = {
 
 const Loading: React.FC<LoadingProps> = ({ message = "Loading..." }) => {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-white">
       <FaSpinner className="h-10 w-10 animate-spin text-indigo-500" />
       <p className="text-sm font-medium text-gray-500">{message}</p>
     </div>
