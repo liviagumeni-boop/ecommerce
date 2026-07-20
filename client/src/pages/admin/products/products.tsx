@@ -145,6 +145,33 @@ useEffect(() => {
   const fetchProducts = async () => {
     const res = await api.get("/products", { params: filters });
     setProducts(res.data);
+      let data = [...res.data];
+
+  if (filters.sort === "az") {
+    data.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }
+
+  if (filters.sort === "za") {
+    data.sort((a, b) =>
+      b.name.localeCompare(a.name)
+    );
+  }
+
+  if (filters.sort === "price_low") {
+    data.sort((a, b) =>
+      Number(a.sale_price) - Number(b.sale_price)
+    );
+  }
+
+  if (filters.sort === "price_high") {
+    data.sort((a, b) =>
+      Number(b.sale_price) - Number(a.sale_price)
+    );
+  }
+
+  setProducts(data);
   };
 
   // ================= FETCH CATEGORIES =================

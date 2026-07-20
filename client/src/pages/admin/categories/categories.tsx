@@ -51,11 +51,21 @@ const [openMenu, setOpenMenu] = useState<{
 } | null>(null);
 
   /* ================= CLOSE MENU ON OUTSIDE CLICK ================= */
-  useEffect(() => {
-    const close = () => setOpenMenu(null);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, []);
+useEffect(() => {
+  const close = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    if (!target.closest(".action-menu")) {
+      setOpenMenu(null);
+    }
+  };
+
+  document.addEventListener("mousedown", close);
+
+  return () => {
+    document.removeEventListener("mousedown", close);
+  };
+}, []);
 
   /* ================= LOAD ================= */
   const fetchCategories = async () => {
@@ -150,14 +160,16 @@ const [openMenu, setOpenMenu] = useState<{
 
   /* ================= DROPDOWN STYLE ================= */
 const dropdownStyle: React.CSSProperties = {
-  position: "fixed",
-  transform: "translateY(-50%)",
+    position: "absolute",
+  top: "calc(100% + 4px)",
+  right: "0",
+  width: "140px",
   background: "#fff",
   border: "1px solid #ddd",
   borderRadius: "6px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+  boxShadow: "0 10px 25px rgba(0,0,0,.25)",
   zIndex: 999999,
-  minWidth: "140px",
+  overflow: "hidden",
 };
 
 const closeBtnStyle: React.CSSProperties = {
@@ -204,48 +216,60 @@ const closeBtnStyle: React.CSSProperties = {
                       <td>
                       {c.name}
                       </td>
-                   <td style={{ position: "relative", textAlign: "right" }}>
-                        {/* 3 DOT BUTTON */}
-                        <button
-                          className="btn btn-light btn-sm"
- onClick={(e) => {
-  e.stopPropagation();
-  setOpenMenu({
-    id: c.id,
-    type: "category",
-  });
-}}
-                        >
-                          ⋮
-                        </button>
-
-                      {/* DROPDOWN */}
-{openMenu?.id === c.id && openMenu.type === "category" && (
-  <div onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
+                 <td style={{ textAlign: "right" }}>
+  <div  className="action-menu"
+    style={{
+      position: "relative",
+      display: "inline-block",
+    }}
+  >
+    {/* 3 DOT BUTTON */}
     <button
-      className="dropdown-item"
-      onClick={() => {
-        setEditCategoryId(c.id);
-        setEditCategoryValue(c.name);
-        setShowEditCategoryModal(true);
-        setOpenMenu(null);
+      className="btn btn-light btn-sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpenMenu({
+          id: c.id,
+          type: "category",
+        });
       }}
     >
-      Edit
+      ⋮
     </button>
 
-    <button
-      className="dropdown-item text-danger"
-      onClick={() => {
-        setDeleteConfirm({ type: "category", id: c.id });
-        setOpenMenu(null);
-      }}
-    >
-      Delete
-    </button>
+    {/* DROPDOWN */}
+    {openMenu?.id === c.id && openMenu.type === "category" && (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={dropdownStyle}
+      >
+        <button
+        type="button"
+  className="dropdown-item w-100 text-start"
+          onClick={() => {
+            setEditCategoryId(c.id);
+            setEditCategoryValue(c.name);
+            setShowEditCategoryModal(true);
+            setOpenMenu(null);
+          }}
+        >
+          Edit
+        </button>
+
+        <button
+        type="button"
+  className="dropdown-item text-danger w-100 text-start"
+          onClick={() => {
+            setDeleteConfirm({ type: "category", id: c.id });
+            setOpenMenu(null);
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    )}
   </div>
-)}
-                      </td>
+</td>
                     </tr>
                   ))}
               </tbody>
@@ -299,52 +323,59 @@ const closeBtnStyle: React.CSSProperties = {
                       <td>
                         {categories.find((c) => c.id === b.category_id)?.name || "-"}
                       </td>
-                   <td style={{ position: "relative", textAlign: "right" }}>
-                        {/* 3 DOT BUTTON */}
-                        <button
-                          className="btn btn-light btn-sm"
-         onClick={(e) => {
-  e.stopPropagation();
-  const rect = e.currentTarget.getBoundingClientRect();
-
-  setOpenMenu({
-    id: b.id,
-    type: "brand",
-   
-  });
-}}
-                        >
-                          ⋮
-                        </button>
-
-                        {/* DROPDOWN */}
- {openMenu?.id === b.id && openMenu.type === "brand" && (
-  <div onClick={(e) => e.stopPropagation()} style={dropdownStyle}>
+           <td style={{ textAlign: "right" }}>
+  <div  className="action-menu"
+    style={{
+      position: "relative",
+      display: "inline-block",
+    }}
+  >
+    {/* 3 DOT BUTTON */}
     <button
-      className="dropdown-item"
-      onClick={() => {
-        setEditBrandId(b.id);
-        setEditBrandValue(b.name);
-        setEditBrandCategory(b.category_id);
-        setShowEditBrandModal(true);
-        setOpenMenu(null);
+      className="btn btn-light btn-sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        setOpenMenu({
+          id: b.id,
+          type: "brand",
+        });
       }}
     >
-      Edit
+      ⋮
     </button>
 
-    <button
-      className="dropdown-item text-danger"
-      onClick={() => {
-        setDeleteConfirm({ type: "brand", id: b.id });
-        setOpenMenu(null);
-      }}
-    >
-      Delete
-    </button>
+    {/* DROPDOWN */}
+    {openMenu?.id === b.id && openMenu.type === "brand" && (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={dropdownStyle}
+      >
+        <button
+          className="dropdown-item"
+          onClick={() => {
+            setEditBrandId(b.id);
+            setEditBrandValue(b.name);
+            setEditBrandCategory(b.category_id);
+            setShowEditBrandModal(true);
+            setOpenMenu(null);
+          }}
+        >
+          Edit
+        </button>
+
+        <button
+          className="dropdown-item text-danger"
+          onClick={() => {
+            setDeleteConfirm({ type: "brand", id: b.id });
+            setOpenMenu(null);
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    )}
   </div>
-)}
-                      </td>
+</td>
                     </tr>
                   ))}
               </tbody>

@@ -22,33 +22,33 @@ const carousel = [
 function Home() {
   const { addToCart } = useCart();
   const { favorites, addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-// remove your local isFav function and just use isFavorite(p.id) everywhere
-const { showToast } = useToast();
+  // remove your local isFav function and just use isFavorite(p.id) everywhere
+  const { showToast } = useToast();
   // ── Auth token from OAuth redirect ──────────────────────────────────────
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-  const role = params.get("role");
-  const user = params.get("user");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const role = params.get("role");
+    const user = params.get("user");
 
-  if (token && role) {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", role);
-    if (user) {
-      localStorage.setItem("user", decodeURIComponent(user));
+    if (token && role) {
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+      if (user) {
+        localStorage.setItem("user", decodeURIComponent(user));
+      }
+      window.history.replaceState({}, "", "/");
+
+      window.dispatchEvent(new Event("authChanged")); // 👈 add this
+
+      if (role === "admin") {
+        window.location.href = "/admin";
+      }
     }
-    window.history.replaceState({}, "", "/");
-
-    window.dispatchEvent(new Event("authChanged")); // 👈 add this
-
-    if (role === "admin") {
-      window.location.href = "/admin";
-    }
-  }
-}, []);
-const [category, setCategory] = useState([]);
-const [brand, setBrand] = useState([]);
+  }, []);
+  const [category, setCategory] = useState([]);
+  const [brand, setBrand] = useState([]);
   const [search, setSearch] = useState("");
   const [slide, setSlide] = useState(0);
 
@@ -61,8 +61,8 @@ const [brand, setBrand] = useState([]);
   }, []); // carousel is now stable (defined outside), so [] is safe
 
   const [openFilter, setOpenFilter] = useState(false);
-const [tempCategory, setTempCategory] = useState([]);
-const [tempBrand, setTempBrand] = useState([]);
+  const [tempCategory, setTempCategory] = useState([]);
+  const [tempBrand, setTempBrand] = useState([]);
   const [tempSort, setTempSort] = useState("");
   const [priceRange, setPriceRange] = useState(2500);
   const [sort, setSort] = useState("");
@@ -106,30 +106,32 @@ const [tempBrand, setTempBrand] = useState([]);
   // ── Helpers ──────────────────────────────────────────────────────────────
 
 
-const toggleFav = (product) => {
-  if (isFavorite(product.id)) {
-    removeFromFavorites(product.id);
-    showToast("Removed from favorites", "warning");
-  } else {
-    addToFavorites(product);
-    showToast("Added to favorites!", "success");
-  }
-};
-
-  const applyFilters = () => {
-    setCategory(tempCategory);
-    setBrand(tempBrand);
-    setSort(tempSort);
-    setOpenFilter(false);
+  const toggleFav = (product) => {
+    if (isFavorite(product.id)) {
+      removeFromFavorites(product.id);
+      showToast("Removed from favorites", "warning");
+    } else {
+      addToFavorites(product);
+      showToast("Added to favorites!", "success");
+    }
   };
+
+const applyFilters = () => {
+  setCategory(tempCategory);
+  setBrand(tempBrand);
+  setSort(tempSort);
+  setOpenFilter(false);
+};
 
 const clearFilters = () => {
   setTempCategory([]);
   setTempBrand([]);
   setTempSort("");
+  setCategory([]);
+  setBrand([]);
+  setSort("");
   setPriceRange(2500);
 };
-
   const getOptionsByCategory = (product) => {
     const cat = product?.category_name?.toLowerCase() || "";
 
@@ -145,31 +147,44 @@ const clearFilters = () => {
     return { sizes: [], colors: [], memory: [] };
   };
 
-const filtered = products.filter((p) =>
-  (tempCategory.length === 0 || tempCategory.includes(p.category_name)) &&
-  (tempBrand.length === 0 || tempBrand.includes(p.brand_name)) &&
-  p.name.toLowerCase().includes(search.toLowerCase())
-);
+const filtered = useMemo(() => {
+  let result = products.filter((p) =>
+    (category.length === 0 || category.includes(p.category_name)) &&
+    (brand.length === 0 || brand.includes(p.brand_name)) &&
+    p.name.toLowerCase().includes(search.toLowerCase()) &&
+    Number(p.sale_price) <= priceRange
+  );
+
+  if (sort === "low") {
+    result.sort((a, b) => Number(a.sale_price) - Number(b.sale_price));
+  }
+
+  if (sort === "high") {
+    result.sort((a, b) => Number(b.sale_price) - Number(a.sale_price));
+  }
+
+  return result;
+}, [products, category, brand, search, sort, priceRange]);
 
   const options = selectedProduct
     ? getOptionsByCategory(selectedProduct)
     : { sizes: [], colors: [], memory: [] };
 
-const toggleCategory = (name) => {
-  setTempCategory((prev) =>
-    prev.includes(name)
-      ? prev.filter((c) => c !== name)
-      : [...prev, name]
-  );
-};
+  const toggleCategory = (name) => {
+    setTempCategory((prev) =>
+      prev.includes(name)
+        ? prev.filter((c) => c !== name)
+        : [...prev, name]
+    );
+  };
 
-const toggleBrand = (name) => {
-  setTempBrand((prev) =>
-    prev.includes(name)
-      ? prev.filter((b) => b !== name)
-      : [...prev, name]
-  );
-};
+  const toggleBrand = (name) => {
+    setTempBrand((prev) =>
+      prev.includes(name)
+        ? prev.filter((b) => b !== name)
+        : [...prev, name]
+    );
+  };
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -339,7 +354,7 @@ const toggleBrand = (name) => {
         {/* PRODUCT DETAIL MODAL */}
         {selectedProduct && (
           <div
-           onClick={() => { setSelectedProduct(null); setSelectedSize(null); setSelectedColor(null); setSelectedMemory(null); }}
+            onClick={() => { setSelectedProduct(null); setSelectedSize(null); setSelectedColor(null); setSelectedMemory(null); }}
             style={{
               position: "fixed",
               inset: 0,
@@ -449,13 +464,13 @@ const toggleBrand = (name) => {
                 <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
                   <button
                     onClick={() => {
-  toggleFav(selectedProduct);
+                      toggleFav(selectedProduct);
 
-  setSelectedProduct(null);
-  setSelectedSize(null);
-  setSelectedColor(null);
-  setSelectedMemory(null);
-}}
+                      setSelectedProduct(null);
+                      setSelectedSize(null);
+                      setSelectedColor(null);
+                      setSelectedMemory(null);
+                    }}
                     style={{
                       padding: 10,
                       border: "none",
@@ -469,39 +484,39 @@ const toggleBrand = (name) => {
                   </button>
 
                   <button
-                 onClick={() => {
-  const cat = selectedProduct?.category_name?.toLowerCase() || "";
+                    onClick={() => {
+                      const cat = selectedProduct?.category_name?.toLowerCase() || "";
 
-  if ((cat.includes("cloth") || cat.includes("shoe")) && options.sizes.length > 0 && !selectedSize) {
-    showToast("Please select a size first", "warning");
-    return;
-  }
+                      if ((cat.includes("cloth") || cat.includes("shoe")) && options.sizes.length > 0 && !selectedSize) {
+                        showToast("Please select a size first", "warning");
+                        return;
+                      }
 
-  if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
-    showToast("Please select memory first", "warning");
-    return;
-  }
+                      if (cat.includes("electronic") && options.memory.length > 0 && !selectedMemory) {
+                        showToast("Please select memory first", "warning");
+                        return;
+                      }
 
-  if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
-    showToast("Please select a color first", "warning");
-    return;
-  }
+                      if (cat.includes("electronic") && options.colors.length > 0 && !selectedColor) {
+                        showToast("Please select a color first", "warning");
+                        return;
+                      }
 
-  addToCart({
-    ...selectedProduct,
-    selectedSize,
-    selectedColor,
-    selectedMemory,
-  });
+                      addToCart({
+                        ...selectedProduct,
+                        selectedSize,
+                        selectedColor,
+                        selectedMemory,
+                      });
 
-  showToast("Product added to cart!", "success");
+                      showToast("Product added to cart!", "success");
 
-  // Close modal
-  setSelectedProduct(null);
-  setSelectedSize(null);
-  setSelectedColor(null);
-  setSelectedMemory(null);
-}}
+                      // Close modal
+                      setSelectedProduct(null);
+                      setSelectedSize(null);
+                      setSelectedColor(null);
+                      setSelectedMemory(null);
+                    }}
                     style={{
                       padding: 10,
                       border: "none",

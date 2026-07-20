@@ -195,7 +195,7 @@ export default function AdminHome() {
 
           {/* ================= TABLE ================= */}
           <div className="card p-3 mb-4">
-            <h5>Loyal Customers</h5>
+            <h5>Loyal Users</h5>
             <Table columns={["Name", "Orders","Loyal"]} data={users} />
           </div>
 
