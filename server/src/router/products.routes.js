@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../config/db");
 const upload = require("../middleware/upload");
 const path = require("path");
+const { validateProductName } = require("../validators/productValidator");
 const router = express.Router();
 
 // GET
@@ -68,6 +69,12 @@ router.post("/", upload.single("image"), async (req, res) => {
       variants,
     } = req.body;
 
+    // ✅ validate product name before touching the DB
+    const nameError = validateProductName(name);
+    if (nameError) {
+      return res.status(400).json({ message: nameError });
+    }
+
     const image = req.file ? "/uploads/" + req.file.filename : null;
 
     const result = await pool.query(
@@ -76,7 +83,7 @@ router.post("/", upload.single("image"), async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING *`,
       [
-        name,
+        name.trim(),
         description,
         brand_id,
         category_id,
@@ -122,6 +129,12 @@ router.put("/:id", upload.single("image"), async (req, res) => {
       image: currentImage,
     } = req.body;
 
+    // ✅ validate product name before touching the DB
+    const nameError = validateProductName(name);
+    if (nameError) {
+      return res.status(400).json({ message: nameError });
+    }
+
     const image = req.file
       ? "/uploads/" + req.file.filename
       : currentImage;
@@ -142,7 +155,7 @@ router.put("/:id", upload.single("image"), async (req, res) => {
       RETURNING *
       `,
       [
-        name,
+        name.trim(),
         description,
         image,
         brand_id,
@@ -242,6 +255,7 @@ router.delete("/:id", async (req, res) => {
     client.release();
   }
 });
+
 router.get("/search", async (req, res) => {
   try {
     const q = req.query.q || "";
@@ -272,4 +286,5 @@ GROUP BY p.id
     res.status(500).json({ message: err.message });
   }
 });
+
 module.exports = router;

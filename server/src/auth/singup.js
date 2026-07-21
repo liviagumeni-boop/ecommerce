@@ -1,12 +1,19 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const pool = require("../config/db");
-
+const { validateSignupInput } = require("../validators/authValidator");  
 const router = express.Router();
 
 router.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
-
+  // validate input
+  const { isValid, errors } = validateSignupInput({ name, email, password });
+  if (!isValid) {
+    return res.status(400).json({
+      message: Object.values(errors)[0],
+      errors,
+    });
+  }
   try {
     // check user exists
     const exists = await pool.query(

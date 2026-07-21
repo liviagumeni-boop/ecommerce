@@ -275,6 +275,7 @@ useEffect(() => {
 
   // ================= ADD PRODUCT =================
   const addProduct = async () => {
+    try{
     const formData = new FormData();
 
     formData.append("name", newProduct.name);
@@ -300,8 +301,13 @@ useEffect(() => {
     resetNewProduct();
     fetchProducts();
     setShowModal(false);
+     } catch (err: any) {
+    console.log(err.response?.data);
+    showToast(err.response?.data?.message || "Failed to create product name should not be longer than 15 letters", "error");
+  }
   };
 const updateProduct = async () => {
+  try {
   const formData = new FormData();
 
   formData.append("name", editProduct.name);
@@ -324,6 +330,10 @@ const updateProduct = async () => {
   resetEditProduct();
   setEditModal(false);
   fetchProducts();
+    } catch (err: any) {
+    console.log(err.response?.data);
+    showToast(err.response?.data?.message || "Failed to update product", "error");
+  }
 };
   // ================= DELETE =================
   const deleteProduct = async (id: number) => {

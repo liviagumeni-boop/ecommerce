@@ -1,6 +1,6 @@
 const express = require("express");
 const pool = require("../config/db");
-
+const { validateCategoryName } = require("../validators/categoriesValidator");
 const router = express.Router();
 
 // ================= GET (search + sort) =================
@@ -44,9 +44,14 @@ router.post("/", async (req, res) => {
   try {
     const { name } = req.body;
 
+    const nameError = validateCategoryName(name);
+    if (nameError) {
+      return res.status(400).json({ message: nameError });
+    }
+
     const result = await pool.query(
       "INSERT INTO categories (name) VALUES ($1) RETURNING *",
-      [name]
+      [name.trim()]
     );
 
     res.json(result.rows[0]);
@@ -60,9 +65,14 @@ router.put("/:id", async (req, res) => {
   try {
     const { name } = req.body;
 
+    const nameError = validateCategoryName(name);
+    if (nameError) {
+      return res.status(400).json({ message: nameError });
+    }
+
     const result = await pool.query(
       "UPDATE categories SET name=$1 WHERE id=$2 RETURNING *",
-      [name, req.params.id]
+      [name.trim(), req.params.id]
     );
 
     res.json(result.rows[0]);

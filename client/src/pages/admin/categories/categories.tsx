@@ -85,21 +85,31 @@ useEffect(() => {
 
   /* ================= CATEGORY CRUD ================= */
   const addCategory = async () => {
+    try{
     if (!newCategory.trim()) return;
     await api.post("/categories", { name: newCategory });
     showToast("Category created", "success");
     setNewCategory("");
     setShowCategoryModal(false);
     fetchCategories();
+      } catch (err: any) {
+    console.log(err.response?.data);
+    showToast(err.response?.data?.message || "Failed to create category name should not be longer than 15 letters", "error");
+  }
   };
 
   const updateCategory = async () => {
+    try{
     if (!editCategoryId) return;
     await api.put(`/categories/${editCategoryId}`, { name: editCategoryValue });
     showToast("Category updated", "success");
     setEditCategoryId(null);
     setEditCategoryValue("");
     fetchCategories();
+     } catch (err: any) {
+    console.log(err.response?.data);
+    showToast(err.response?.data?.message || "Failed to update name should not be longer than 15 letters", "error");
+  }
   };
 
   const deleteCategory = async (id: number) => {
@@ -111,15 +121,21 @@ useEffect(() => {
 
   /* ================= BRAND CRUD ================= */
   const addBrand = async () => {
+    try{
     if (!newBrand.name || !newBrand.category_id) return;
     await api.post("/brands", newBrand);
     showToast("Brand created", "success");
     setNewBrand({ name: "", category_id: 0 });
     setShowBrandModal(false);
     fetchBrands();
+     } catch (err: any) {
+    console.log(err.response?.data);
+    showToast(err.response?.data?.message || "Failed to create brand name should not be longer than 15 letters", "error");
+  }
   };
 
   const updateBrand = async () => {
+    try{ 
     if (!editBrandId) return;
     await api.put(`/brands/${editBrandId}`, {
       name: editBrandValue,
@@ -129,6 +145,10 @@ useEffect(() => {
     setEditBrandId(null);
     setEditBrandValue("");
     fetchBrands();
+     } catch (err: any) {
+    console.log(err.response?.data);
+    showToast(err.response?.data?.message || "Failed to update brand name should not be longer than 15 letters", "error");
+  }
   };
 
   const deleteBrand = async (id: number) => {

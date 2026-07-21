@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs"); // match whatever your signup route uses — swap to "bcrypt" if that's what you have installed
-const pool = require("../config/db"); // your pg Pool
+const bcrypt = require("bcryptjs");
+const pool = require("../config/db");
+const { validateName, validateEmail, validatePassword } = require("../validators/authValidator");
 
 // GET /api/users/me
 router.get("/me", async (req, res) => {
@@ -41,6 +42,16 @@ router.put("/me", async (req, res) => {
   try {
     const userId = req.headers.userid;
     const { name, email, address } = req.body;
+
+    const nameError = validateName(name);
+    if (nameError) {
+      return res.status(400).json({ message: nameError });
+    }
+
+    const emailError = validateEmail(email);
+    if (emailError) {
+      return res.status(400).json({ message: emailError });
+    }
 
     const result = await pool.query(
       `
@@ -102,8 +113,9 @@ router.put("/me/password", async (req, res) => {
       return res.status(400).json({ message: "Old and new password are required" });
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
     }
 
     const result = await pool.query(
