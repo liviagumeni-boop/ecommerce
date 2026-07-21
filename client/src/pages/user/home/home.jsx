@@ -130,7 +130,7 @@ const clearFilters = () => {
   setCategory([]);
   setBrand([]);
   setSort("");
-  setPriceRange(2500);
+  setPriceRange(2500);  
 };
   const getOptionsByCategory = (product) => {
     const cat = product?.category_name?.toLowerCase() || "";

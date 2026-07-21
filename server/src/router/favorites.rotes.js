@@ -43,7 +43,7 @@ router.get("/me", async (req, res) => {
 // ADD TO FAVORITES
 // ===============================
 router.post("/me", async (req, res) => {
-  try {
+  try {      
     const userId = req.headers.userid;
     const { productId } = req.body;
 
