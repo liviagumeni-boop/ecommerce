@@ -48,7 +48,9 @@ const exitRoutes = require("./src/router/exit.routes");
 const partiesRoutes = require("./src/router/users.routes");
 const profileRoutes = require("./src/router/profile.routes");
 const favoritesRoutes = require("./src/router/favorites.rotes");
+const chatRoutes = require("./src/router/chat.routes");
 
+app.use("/api/chat", chatRoutes);
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/users", profileRoutes);
 app.use("/api/parties", partiesRoutes);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import api, { BACKEND_URL } from "../../../api/axios";
+
 import {
   FaHeart,
   FaShoppingCart,
@@ -7,11 +8,13 @@ import {
   FaChevronRight,
   FaFilter,
   FaTimes,
+  FaComments,
 } from "react-icons/fa";
 
 import { useCart } from "../../../componets/common/Cartcontext";
 import { useFavorites } from "../../../componets/common/FavoritesContext";
 import { useToast } from "../../../componets/common/ToastContext";
+
 // Moved outside component so it's stable — no re-creation on every render
 const carousel = [
   { tag: "Sale", img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8" },
@@ -22,10 +25,9 @@ const carousel = [
 function Home() {
   const { addToCart } = useCart();
   const { favorites, addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  // remove your local isFav function and just use isFavorite(p.id) everywhere
   const { showToast } = useToast();
-  // ── Auth token from OAuth redirect ──────────────────────────────────────
 
+  // ── Auth token from OAuth redirect ──────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
@@ -40,25 +42,26 @@ function Home() {
       }
       window.history.replaceState({}, "", "/");
 
-      window.dispatchEvent(new Event("authChanged")); // 👈 add this
+      window.dispatchEvent(new Event("authChanged"));
 
       if (role === "admin") {
         window.location.href = "/admin";
       }
     }
   }, []);
+
   const [category, setCategory] = useState([]);
   const [brand, setBrand] = useState([]);
   const [search, setSearch] = useState("");
   const [slide, setSlide] = useState(0);
 
-  // ── Single carousel timer (was duplicated before) ────────────────────────
+  // ── Single carousel timer ────────────────────────────────────────────
   useEffect(() => {
     const timer = setInterval(() => {
       setSlide((prev) => (prev + 1) % carousel.length);
     }, 3000);
     return () => clearInterval(timer);
-  }, []); // carousel is now stable (defined outside), so [] is safe
+  }, []);
 
   const [openFilter, setOpenFilter] = useState(false);
   const [tempCategory, setTempCategory] = useState([]);
@@ -75,7 +78,34 @@ function Home() {
   const [brands, setBrands] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // ── Data fetching (was defined but never called before) ──────────────────
+  // ── Chatbot state ─────────────────────────────────────────────────────
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+
+  const sendMessage = async () => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput;
+
+    setChatMessages((prev) => [...prev, { role: "user", text: userMessage }]);
+    setChatInput("");
+
+    try {
+      const res = await api.post("/chat", { message: userMessage });
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: res.data.reply },
+      ]);
+    } catch (err) {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "Sorry, something went wrong." },
+      ]);
+    }
+  };
+
+  // ── Data fetching ──────────────────────────────────────────────────────
   const fetchProducts = async () => {
     const res = await api.get("/products");
     setProducts(res.data);
@@ -104,8 +134,6 @@ function Home() {
   }, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-
-
   const toggleFav = (product) => {
     if (isFavorite(product.id)) {
       removeFromFavorites(product.id);
@@ -116,22 +144,23 @@ function Home() {
     }
   };
 
-const applyFilters = () => {
-  setCategory(tempCategory);
-  setBrand(tempBrand);
-  setSort(tempSort);
-  setOpenFilter(false);
-};
+  const applyFilters = () => {
+    setCategory(tempCategory);
+    setBrand(tempBrand);
+    setSort(tempSort);
+    setOpenFilter(false);
+  };
 
-const clearFilters = () => {
-  setTempCategory([]);
-  setTempBrand([]);
-  setTempSort("");
-  setCategory([]);
-  setBrand([]);
-  setSort("");
-  setPriceRange(2500);  
-};
+  const clearFilters = () => {
+    setTempCategory([]);
+    setTempBrand([]);
+    setTempSort("");
+    setCategory([]);
+    setBrand([]);
+    setSort("");
+    setPriceRange(2500);
+  };
+
   const getOptionsByCategory = (product) => {
     const cat = product?.category_name?.toLowerCase() || "";
 
@@ -147,24 +176,24 @@ const clearFilters = () => {
     return { sizes: [], colors: [], memory: [] };
   };
 
-const filtered = useMemo(() => {
-  let result = products.filter((p) =>
-    (category.length === 0 || category.includes(p.category_name)) &&
-    (brand.length === 0 || brand.includes(p.brand_name)) &&
-    p.name.toLowerCase().includes(search.toLowerCase()) &&
-    Number(p.sale_price) <= priceRange
-  );
+  const filtered = useMemo(() => {
+    let result = products.filter((p) =>
+      (category.length === 0 || category.includes(p.category_name)) &&
+      (brand.length === 0 || brand.includes(p.brand_name)) &&
+      p.name.toLowerCase().includes(search.toLowerCase()) &&
+      Number(p.sale_price) <= priceRange
+    );
 
-  if (sort === "low") {
-    result.sort((a, b) => Number(a.sale_price) - Number(b.sale_price));
-  }
+    if (sort === "low") {
+      result.sort((a, b) => Number(a.sale_price) - Number(b.sale_price));
+    }
 
-  if (sort === "high") {
-    result.sort((a, b) => Number(b.sale_price) - Number(a.sale_price));
-  }
+    if (sort === "high") {
+      result.sort((a, b) => Number(b.sale_price) - Number(a.sale_price));
+    }
 
-  return result;
-}, [products, category, brand, search, sort, priceRange]);
+    return result;
+  }, [products, category, brand, search, sort, priceRange]);
 
   const options = selectedProduct
     ? getOptionsByCategory(selectedProduct)
@@ -172,17 +201,13 @@ const filtered = useMemo(() => {
 
   const toggleCategory = (name) => {
     setTempCategory((prev) =>
-      prev.includes(name)
-        ? prev.filter((c) => c !== name)
-        : [...prev, name]
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]
     );
   };
 
   const toggleBrand = (name) => {
     setTempBrand((prev) =>
-      prev.includes(name)
-        ? prev.filter((b) => b !== name)
-        : [...prev, name]
+      prev.includes(name) ? prev.filter((b) => b !== name) : [...prev, name]
     );
   };
 
@@ -465,7 +490,6 @@ const filtered = useMemo(() => {
                   <button
                     onClick={() => {
                       toggleFav(selectedProduct);
-
                       setSelectedProduct(null);
                       setSelectedSize(null);
                       setSelectedColor(null);
@@ -511,7 +535,6 @@ const filtered = useMemo(() => {
 
                       showToast("Product added to cart!", "success");
 
-                      // Close modal
                       setSelectedProduct(null);
                       setSelectedSize(null);
                       setSelectedColor(null);
@@ -534,6 +557,97 @@ const filtered = useMemo(() => {
           </div>
         )}
       </div>
+
+      {/* CHATBOT BUBBLE — rendered once, fixed to viewport */}
+      <div
+        onClick={() => setChatOpen(!chatOpen)}
+        style={{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          width: 65,
+          height: 65,
+          borderRadius: "50%",
+          background: "#0d6efd",
+          color: "white",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          cursor: "pointer",
+          zIndex: 1000,
+          boxShadow: "0 5px 15px rgba(0,0,0,.3)",
+        }}
+      >
+        <FaComments size={28} />
+      </div>
+
+      {chatOpen && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 95,
+            right: 20,
+            width: 350,
+            height: 500,
+            background: "white",
+            borderRadius: 15,
+            boxShadow: "0 10px 30px rgba(0,0,0,.25)",
+            display: "flex",
+            flexDirection: "column",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              padding: 15,
+              background: "#0d6efd",
+              color: "white",
+              borderTopLeftRadius: 15,
+              borderTopRightRadius: 15,
+              fontWeight: "bold",
+            }}
+          >
+            AI Shopping Assistant
+          </div>
+
+          <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                style={{
+                  textAlign: msg.role === "user" ? "right" : "left",
+                  marginBottom: 10,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    background: msg.role === "user" ? "#0d6efd" : "#f1f1f1",
+                    color: msg.role === "user" ? "white" : "black",
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    maxWidth: "80%",
+                  }}
+                >
+                  {msg.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", padding: 10, gap: 10 }}>
+            <input
+              className="form-control"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            />
+            <button className="btn btn-primary" onClick={sendMessage}>
+              Send
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
